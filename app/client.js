@@ -1,11 +1,11 @@
 'use strict'
 
-var isElementAView = function(element) {
+function isElementAView(element) {
 	return (element instanceof HTMLElement) && 
 		(element.getAttribute("type") === "text/view");
 }
 
-var displayViewFromId = function(toDisplayId, viewContainerId) {
+function displayViewFromId(toDisplayId, viewContainerId) {
 	var view = document.getElementById(viewContainerId);
 	var viewToDisplay = document.getElementById(toDisplayId);
 
@@ -18,21 +18,29 @@ var displayViewFromId = function(toDisplayId, viewContainerId) {
 
 var welcomeView = (function() {
 
-	var isPasswordValid = function(password, repeatPassword) {
-		return (password instanceof HTMLElement && repeatPassword instanceof HTMLElement) &&
-			(password.value) && (password.value === repeatPassword.value);
+	function validateSignupForm() {
+		
+		// password
+		var password = document.getElementById("password");
+		var repeatPassword = document.getElementById("repeat_password");
+		if (password.value && (password.value === repeatPassword.value)) {
+			repeatPassword.className = "";
+		} else {
+			repeatPassword.className = "invalid_input";
+		}
+
+		return true;
 	};
 
-	var addEvents = function() {
+	function addEvents() {
 		var password = document.getElementById("password");
 		var repeatPassword = document.getElementById("repeat_password");
 		var signup = document.getElementById("signup");
 
 		signup.onsubmit = function(e) {
-			if (!isPasswordValid(password, repeatPassword)) {
-				alert("password invalid!");
+			if (validateSignupForm()) {
 			}
-			
+
 			return false;
 		};
 	};
