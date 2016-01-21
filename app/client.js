@@ -19,19 +19,22 @@ var displayViewFromId = function(toDisplayId, viewContainerId) {
 var welcomeView = (function() {
 
 	var isPasswordValid = function(password, repeatPassword) {
-		return (password instanceof HTMLElement && repeat instanceof HTMLElement) &&
-			(password.value) && (password.value === repeat.value);
+		return (password instanceof HTMLElement && repeatPassword instanceof HTMLElement) &&
+			(password.value) && (password.value === repeatPassword.value);
 	};
 
 	var addEvents = function() {
 		var password = document.getElementById("password");
 		var repeatPassword = document.getElementById("repeat_password");
+		var signup = document.getElementById("signup");
 
-		repeatPassword.addEventListener("input", function(e) {
+		signup.onsubmit = function(e) {
 			if (!isPasswordValid(password, repeatPassword)) {
 				alert("password invalid!");
 			}
-		}, false);
+			
+			return false;
+		};
 	};
 
 	var view = {
