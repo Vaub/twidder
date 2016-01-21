@@ -1,9 +1,74 @@
 <html>
-    <head>
-        <link href="client.css" type="text/css" rel="stylesheet">
-        <script src="client.js" type="text/javascript"></script>
-        <script src="serverstub.js" type="text/javascript"></script>
-    </head>
-    <body>
-    </body>
+	<head>
+		<link href="client.css" type="text/css" rel="stylesheet">
+		<script src="client.js" type="text/javascript"></script>
+		<script src="serverstub.js" type="text/javascript"></script>
+
+		<script id="welcome_view" type="text/view">
+			<div id="logo_slogan" class="section">
+			</div>
+			<div id="login_form" class="section">
+				<form action="">
+					<div>
+						<label for="user_email">Email</label>
+						<input type="email" name="user_email" id="user_email" required>
+					</div>
+					<div>
+						<label for="user_password">Password</label>
+						<input type="password" name="user_password" id="user_password" required>
+					</div>
+					<input type="submit" value="Login">
+				</form>
+			</div>
+			<div id="signup_form" class="section">
+				<h2>Sign up here</h2>
+				<form id="signup_form" action="">
+					<div>
+						<label>First name</label>
+						<input type="text" name="first_name" required>
+					</div>
+					<div>
+						<label>Family name</label>
+						<input type="text" name="family_name" required>
+					</div>
+					<div>
+						<label>Gender</label>
+						<select name="gender" required>
+							<option value="m">Male</option>
+							<option value="f">Female</option>
+						</select>
+					</div>
+					<div>
+						<label>City</label>
+						<input type="text" name="city" required>
+					</div>
+					<div>
+						<label>Country</label>
+						<input type="text" name="country" required>
+					</div>
+					<div>
+						<label>Email</label>
+						<input type="email" name="username" required>
+					</div>
+					<div>
+						<label>Password</label>
+						<input type="password" name="password" id="password" required>
+					</div>
+					<div>
+						<label>Repeat <abbr title="password">pwd</abbr></label>
+						<input type="password" name="repeat_password" id="repeat_password" required>
+					</div>
+					<input type="submit" value="SignUp">
+				</form>
+			</div>	
+		</script>
+		<script id="login_view" type="text/view">
+			<h1>You are logged in!!!</h1>
+		</script>
+	</head>
+	<body>
+		<div id="current_view">
+			Loading...
+		</div>
+	</body>
 </html>

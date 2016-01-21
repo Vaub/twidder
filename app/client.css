@@ -1,0 +1,63 @@
+html{
+    background-color: cornflowerblue;
+}
+
+form{
+    margin: 5px;
+}
+
+label{
+    float: left;
+    display: inline-block;
+    width: 100px;
+}
+
+input[type="submit"]{
+    float: right;
+    width: 70px;
+}
+
+input, select{
+    box-sizing: border-box;
+    width: 140px;
+    margin-bottom: 5px;
+}
+
+abbr{
+    text-decoration: underline;
+}
+
+h2{
+    text-align: center;
+}
+
+.section{
+    background-color: white;
+}
+
+#current_view{
+    width: 600px;
+    height: 400px;
+    margin: 100px auto auto;
+}
+
+#logo_slogan{
+    width: 340px;
+    height: 400px;
+    float: left;
+    margin-right: 10px;
+    background-image: url("wimage.png");
+}
+
+#login_form{
+    margin-bottom: 10px;
+    width: 250px;
+    float: right;
+    height: 20%;
+}
+
+#signup_form{
+    float: right;
+    width: 250px;
+    height: 77.5%;
+}
