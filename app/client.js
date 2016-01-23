@@ -129,7 +129,7 @@ function SignedInView(session) {
             tabularView();
         }
     }
-};
+}
 
 // WelcomeView state
 function WelcomeView(session) {
