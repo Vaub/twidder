@@ -122,7 +122,6 @@ h2{
 header {
     background: white;
 
-    padding: 10px;
     margin-bottom: 10px;
 }
 
@@ -139,15 +138,37 @@ footer {
     font-style: italic;
 }
 
+.menu {
+    height: 45px;
+}
+
 .menu_tab {
+    height: 100%;
+    line-height: 45px;
     display: inline-block;
 
+    padding: 0 10px;
     cursor: hand;
-    margin: 0 5px -3px;
+}
+
+.menu_title {
+    float: left;
+    font-size: 1.2em;
+    font-weight: bold;
+
+    line-height: 45px;
+    padding: 0 10px 0 15px;
+}
+
+.menu_tab span {
     border-bottom: 3px solid transparent;
 }
 
-.selected {
+.menu_tab:hover {
+    background-color: rgb(235,235,235);
+}
+
+.selected span {
     font-weight: bold;
     border-color: orange;
 }
