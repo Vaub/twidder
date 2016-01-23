@@ -70,13 +70,14 @@ h2{
     position: absolute;
     left: 0;
     top: 0;
-    width: 250px;
+    width: 350px;
     margin: 10px;
 }
 
 .message {
     background: white;
     padding: 10px;
+    padding-right: 30px;
     margin-bottom: 10px;
 
     border-radius: 5px;
@@ -103,6 +104,15 @@ h2{
 
 .message_error .message_close {
     color: rgb(175,75,75);
+}
+
+.message_success {
+    background-color: rgb(175, 255, 175);
+    border-color: rgb(100,200,100);
+}
+
+.message_success .message_close {
+    color: rgb(75,175,75);
 }
 
 .hidden{
