@@ -75,7 +75,7 @@ var WelcomeView = function(session) {
     }
 
 	function validateSignupForm() {
-		
+
 		// password
 		var password = document.getElementById("password");
 		var repeatPassword = document.getElementById("repeat_password");
@@ -86,10 +86,10 @@ var WelcomeView = function(session) {
             Utils.addClass(password, "invalid_input");
             Utils.addClass(repeatPassword, "invalid_input");
             return false;
-		}
+        }
 
-		return true;
-	}
+        return true;
+    }
 
 	function addEvents() {
         var login = document.getElementById("login");
@@ -105,14 +105,24 @@ var WelcomeView = function(session) {
             return false;
         };
 
-		signup.onsubmit = function(e) {
-			if (validateSignupForm()) {
-                console.log("It's working");
-			}
+        signup.onsubmit = function (e) {
+            if (validateSignupForm()) {
 
-			return false;
-		};
-	}
+                var signUpForm = {
+                    'email': document.getElementById("username").value,
+                    'password': document.getElementById("password").value,
+                    'firstname': document.getElementById("first_name").value,
+                    'familyname': document.getElementById("family_name").value,
+                    'gender': document.getElementById("gender").value,
+                    'city': document.getElementById("city").value,
+                    'country': document.getElementById("country").value
+                };
+
+                displayMessage(serverstub.signUp(signUpForm).message);
+            }
+            return false;
+        };
+    }
 
     return {
         displayView: function () {
@@ -158,6 +168,12 @@ var Session = function(server, notifySessionChange) {
     }
 };
 
+function displayMessage(message){
+    var messageElement = document.getElementById("message");
+    messageElement.innerHTML = message;
+    Utils.removeClass(messageElement.parentNode, "hidden");
+}
+
 // Main "refresh" of the website
 var displayView = function() {
     if (session.isSignedIn()) {
@@ -168,6 +184,11 @@ var displayView = function() {
 };
 
 window.onload = function() {
+    var messageButtons = document.getElementById("message_ok");
+    messageButtons.onclick = function() {
+            Utils.addClass(messageButtons.parentNode,"hidden");
+    };
+
     session = new Session(serverstub, displayView);
     signedInView = new SignedInView(session);
     welcomeView = new WelcomeView(session);
