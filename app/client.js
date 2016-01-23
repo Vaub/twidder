@@ -36,40 +36,57 @@ function removeClass(element, classToRemove) {
     }
 }
 
-var welcomeView = (function() {
+function displayMessage(message){
+    var messageElement = document.getElementById("message");
+    messageElement.innerHTML = message;
+    removeClass(messageElement.parentNode, "hidden");
+}
+
+var welcomeView;
+welcomeView = (function () {
 
     var minPasswordLength = 6;
 
-	function validateSignupForm() {
-		
-		// password
-		var password = document.getElementById("password");
-		var repeatPassword = document.getElementById("repeat_password");
-		if (password.value && password.value.length >= minPasswordLength && (password.value === repeatPassword.value)) {
-			removeClass(password, "invalid_input");
+    function validateSignupForm() {
+
+        // password
+        var password = document.getElementById("password");
+        var repeatPassword = document.getElementById("repeat_password");
+        if (password.value && password.value.length >= minPasswordLength && (password.value === repeatPassword.value)) {
+            removeClass(password, "invalid_input");
             removeClass(repeatPassword, "invalid_input");
-		} else {
+        } else {
             addClass(password, "invalid_input");
             addClass(repeatPassword, "invalid_input");
             return false;
-		}
+        }
 
-		return true;
-	}
+        return true;
+    }
 
-	function addEvents() {
-		var password = document.getElementById("password");
-		var repeatPassword = document.getElementById("repeat_password");
-		var signup = document.getElementById("signup");
+    function addEvents() {
+        var password = document.getElementById("password");
+        var repeatPassword = document.getElementById("repeat_password");
+        var signup = document.getElementById("signup");
 
-		signup.onsubmit = function(e) {
-			if (validateSignupForm()) {
-                alert("Everything is valid!")
-			}
+        signup.onsubmit = function (e) {
+            if (validateSignupForm()) {
 
-			return false;
-		};
-	}
+                var signUpForm = {
+                    'email': document.getElementById("username").value,
+                    'password': document.getElementById("password").value,
+                    'firstname': document.getElementById("first_name").value,
+                    'familyname': document.getElementById("family_name").value,
+                    'gender': document.getElementById("gender").value,
+                    'city': document.getElementById("city").value,
+                    'country': document.getElementById("country").value
+                };
+
+                displayMessage(serverstub.signUp(signUpForm).message);
+            }
+            return false;
+        };
+    }
 
     return {
         displayView: function () {
@@ -84,5 +101,10 @@ var displayView = function() {
 };
 
 window.onload = function() {
+    var messageButtons = document.getElementById("message_ok");
+    messageButtons.onclick = function() {
+            addClass(messageButtons.parentNode,"hidden");
+        };
+
 	displayView();
 };

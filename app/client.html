@@ -25,30 +25,30 @@
 				<form id="signup" action="">
 					<div>
 						<label>First name</label>
-						<input type="text" name="first_name" required>
+						<input type="text" name="first_name" id="first_name" required>
 					</div>
 					<div>
 						<label>Family name</label>
-						<input type="text" name="family_name" required>
+						<input type="text" name="family_name" id="family_name" required>
 					</div>
 					<div>
 						<label>Gender</label>
-						<select name="gender" required>
-							<option value="m">Male</option>
+						<select name="gender" id="gender" required>
+							<option value="m" selected="selected">Male</option>
 							<option value="f">Female</option>
 						</select>
 					</div>
 					<div>
 						<label>City</label>
-						<input type="text" name="city" required>
+						<input type="text" name="city" id="city" required>
 					</div>
 					<div>
 						<label>Country</label>
-						<input type="text" name="country" required>
+						<input type="text" name="country" id="country" required>
 					</div>
 					<div>
 						<label>Email</label>
-						<input type="email" name="username" required>
+						<input type="email" name="username" id="username" required>
 					</div>
 					<div>
 						<label>Password</label>
@@ -67,6 +67,12 @@
 		</script>
 	</head>
 	<body>
+		<div id="message_box" class="hidden">
+			<div id="message">
+				Message...
+			</div>
+			<button id="message_ok">Ok</button>
+		</div>
 		<div id="current_view">
 			Loading...
 		</div>
