@@ -98,27 +98,27 @@ function Messages(messageTimeout) {
 // SignedInView state
 function SignedInView(session) {
 
-    function displayTab(currentTabName, selectedTabName){
-        var currentTab = document.getElementById(currentTabName);
-        var selectedTab = document.getElementById(selectedTabName);
+    function displayTab(currentTabId, selectedTabId){
+        var currentTab = document.getElementById(currentTabId);
+        var selectedTab = document.getElementById(selectedTabId);
 
         Utils.addClass(currentTab, "hidden");
         Utils.removeClass(selectedTab, "hidden");
     }
 
-    function tabularView(){
+    function createTabEvents(){
         var tabs = document.getElementsByClassName("menu_tab");
 
         Array.prototype.forEach.call(tabs, function(tab){
             tab.onclick = function(){
                 var currentTab = document.getElementsByClassName("selected")[0];
-                var currentTabName = currentTab.getAttribute("rel");
-                var selectedTabName = tab.getAttribute("rel");
+                var currentTabId = currentTab.getAttribute("rel");
+                var selectedTabId = tab.getAttribute("rel");
 
                 Utils.removeClass(currentTab, "selected");
                 Utils.addClass(tab, "selected");
 
-                displayTab(currentTabName, selectedTabName);
+                displayTab(currentTabId, selectedTabId);
             };
         });
     }
@@ -126,7 +126,7 @@ function SignedInView(session) {
     return {
         displayView: function() {
             ViewUtils.displayViewFromId("login_view", "current_view");
-            tabularView();
+            createTabEvents();
         }
     }
 };
