@@ -1,4 +1,4 @@
-'use strict'
+'use strict';
 
 function isElementAView(element) {
 	return (element instanceof HTMLElement) && 
@@ -14,23 +14,48 @@ function displayViewFromId(toDisplayId, viewContainerId) {
 	}
 
 	view.innerHTML = viewToDisplay.innerHTML;
-};
+}
+
+function addClass(element, classToAdd) {
+    if (!(element instanceof HTMLElement)) {
+        return false;
+    }
+
+    if (!element.classList.contains(classToAdd)) {
+        element.classList.add(classToAdd);
+    }
+}
+
+function removeClass(element, classToRemove) {
+    if (!(element instanceof HTMLElement)) {
+        return false;
+    }
+
+    if (element.classList.contains(classToRemove)) {
+        element.classList.remove(classToRemove);
+    }
+}
 
 var welcomeView = (function() {
+
+    var minPasswordLength = 6;
 
 	function validateSignupForm() {
 		
 		// password
 		var password = document.getElementById("password");
 		var repeatPassword = document.getElementById("repeat_password");
-		if (password.value && (password.value === repeatPassword.value)) {
-			repeatPassword.className = "";
+		if (password.value && password.value.length >= minPasswordLength && (password.value === repeatPassword.value)) {
+			removeClass(password, "invalid_input");
+            removeClass(repeatPassword, "invalid_input");
 		} else {
-			repeatPassword.className = "invalid_input";
+            addClass(password, "invalid_input");
+            addClass(repeatPassword, "invalid_input");
+            return false;
 		}
 
 		return true;
-	};
+	}
 
 	function addEvents() {
 		var password = document.getElementById("password");
@@ -39,20 +64,19 @@ var welcomeView = (function() {
 
 		signup.onsubmit = function(e) {
 			if (validateSignupForm()) {
+                alert("Everything is valid!")
 			}
 
 			return false;
 		};
-	};
+	}
 
-	var view = {
-		displayView: function() {
-			displayViewFromId("welcome_view", "current_view");
-			addEvents();
-		}
-	};
-
-	return view;
+    return {
+        displayView: function () {
+            displayViewFromId("welcome_view", "current_view");
+            addEvents();
+        }
+    };
 })();
 
 var displayView = function() {
