@@ -41,8 +41,34 @@ var Utils = {
     }
 };
 
+var Messages = {
+    newMessage: function(messageText, styleClass) {
+        var box = document.getElementById("message_box");
+        var messageView = document.getElementById("message_view");
+
+        var message = document.createElement("div");
+        message.innerHTML = messageView.innerHTML;
+
+        box.appendChild(message);
+
+        var messageDiv = message.getElementsByClassName("message")[0];
+        if (styleClass && typeof(styleClass) === "string") {
+            messageDiv.classList.add(styleClass);
+        }
+        message.getElementsByClassName("message_text")[0].innerHTML = messageText;
+        message.getElementsByClassName("message_close")[0].onclick = function() {
+            box.removeChild(message);
+        };
+        messageDiv.classList.remove("hidden");
+    },
+
+    newError: function(text) {
+        this.newMessage(text, "message_error")
+    }
+};
+
 // SignedInView state
-var SignedInView = function(session) {
+function SignedInView(session) {
 
     return {
         displayView: function() {
@@ -52,7 +78,7 @@ var SignedInView = function(session) {
 };
 
 // WelcomeView state
-var WelcomeView = function(session) {
+function WelcomeView(session) {
 
     var minPasswordLength = 6;
 
@@ -109,16 +135,16 @@ var WelcomeView = function(session) {
             if (validateSignupForm()) {
 
                 var signUpForm = {
-                    'email': document.getElementById("username").value,
-                    'password': document.getElementById("password").value,
-                    'firstname': document.getElementById("first_name").value,
-                    'familyname': document.getElementById("family_name").value,
-                    'gender': document.getElementById("gender").value,
-                    'city': document.getElementById("city").value,
-                    'country': document.getElementById("country").value
+                    email: document.getElementById("username").value,
+                    password: document.getElementById("password").value,
+                    firstname: document.getElementById("first_name").value,
+                    familyname: document.getElementById("family_name").value,
+                    gender: document.getElementById("gender").value,
+                    city: document.getElementById("city").value,
+                    country: document.getElementById("country").value
                 };
 
-                displayMessage(serverstub.signUp(signUpForm).message);
+                Messages.newMessage(serverstub.signUp(signUpForm).message);
             }
             return false;
         };
@@ -135,7 +161,7 @@ var WelcomeView = function(session) {
 // Session encapsulate the current session state.
 // Upon changes to this state, it'll use the notifySessionChange method
 // ( Currently the displayView() )
-var Session = function(server, notifySessionChange) {
+function Session(server, notifySessionChange) {
     var TOKEN = "sessionToken";
 
     var sessionToken = localStorage.getItem(TOKEN);
@@ -184,11 +210,6 @@ var displayView = function() {
 };
 
 window.onload = function() {
-    var messageButtons = document.getElementById("message_ok");
-    messageButtons.onclick = function() {
-            Utils.addClass(messageButtons.parentNode,"hidden");
-    };
-
     session = new Session(serverstub, displayView);
     signedInView = new SignedInView(session);
     welcomeView = new WelcomeView(session);

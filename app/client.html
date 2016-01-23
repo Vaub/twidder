@@ -1,13 +1,13 @@
 <html>
 	<head>
-		<link href="client.css" type="text/css" rel="stylesheet">
+		<link href="client.css" type="text/css" rel="stylesheet" />
 		<script src="client.js" type="text/javascript"></script>
 		<script src="serverstub.js" type="text/javascript"></script>
 
 		<script id="welcome_view" type="text/view">
-			<div id="logo_slogan" class="section">
+			<div id="logo_slogan" class="welcome_section">
 			</div>
-			<div id="login_form" class="section">
+			<div id="login_form" class="welcome_section">
 				<form id="login" action="">
 					<div>
 						<label for="user_email">Email</label>
@@ -20,7 +20,7 @@
 					<input type="submit" value="Login">
 				</form>
 			</div>
-			<div id="signup_form" class="section">
+			<div id="signup_form" class="welcome_section">
 				<h2>Sign up here</h2>
 				<form id="signup" action="">
 					<div>
@@ -63,15 +63,55 @@
 			</div>	
 		</script>
 		<script id="login_view" type="text/view">
-			<h1>You are logged in!!!</h1>
+		    <header>
+		        <div class="menu">
+		            <div class="menu_tab selected" rel="home">Home</div>
+		            <div class="menu_tab" rel="browse">Browse</div>
+		            <div class="menu_tab" rel="account">Account</div>
+                </div>
+            </header>
+			<section>
+			    <div id="home" class="panel">
+			        <h1>Home</h1>
+			    </div>
+			    <div id="browse" class="panel">
+			        <h1>Browse</h1>
+
+			    </div>
+			    <div id="account" class="panel">
+			        <h1>Account</h1>
+			        <div>
+			        	<h2>Change password</h2>
+						<form id="change_password" action="#" method="post">
+							<div>
+								<label for="old_password">Old password</label>
+								<input type="password" name="old_password" id="old_password" />
+							</div>
+
+							<div>
+								<label for="new_password">New password</label>
+								<input type="password" name="new_password" id="new_password" />
+							</div>
+							<div>
+								<label for="repeat_new_password">Repeat new password</label>
+								<input type="password" name="repeat_new_password" id="repeat_new_password" />
+							</div>
+						</form>
+			        </div>
+			        <button id="sign_out">Sign out</button>
+			    </div>
+			</section>
+			<footer>Twidder &copy; 2016-.</footer>
+		</script>
+		<script id="message_view" type="text/view">
+			<div class="message hidden" />
+				<div class="message_close">x</div>
+				<div class="message_text"></div>
+			</div>
 		</script>
 	</head>
 	<body>
-		<div id="message_box" class="hidden">
-			<div id="message">
-				Message...
-			</div>
-			<button id="message_ok">Ok</button>
+		<div id="message_box">
 		</div>
 		<div id="current_view">
 			Loading...
