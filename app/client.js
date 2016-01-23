@@ -1,16 +1,18 @@
 'use strict';
 
+var messages;
+
 var session;
 var signedInView;
 var welcomeView;
 
 var ViewUtils = {
-    isElementAView: function(element) {
+    isElementAView: function (element) {
         return (element instanceof HTMLElement) &&
             (element.getAttribute("type") === "text/view");
     },
 
-    displayViewFromId: function(toDisplayId, viewContainerId) {
+    displayViewFromId: function (toDisplayId, viewContainerId) {
         var view = document.getElementById(viewContainerId);
         var viewToDisplay = document.getElementById(toDisplayId);
 
@@ -25,7 +27,7 @@ var ViewUtils = {
 // Various utilities methods
 var Utils = {
     // Add a class to an HTMLElement
-    addClass: function(element, classToAdd) {
+    addClass: function (element, classToAdd) {
         if (!(element instanceof HTMLElement) || element.classList.contains(classToAdd)) {
             return false;
         }
@@ -33,7 +35,7 @@ var Utils = {
     },
 
     // Remove a class from an HTMLElement
-    removeClass: function(element, classToRemove) {
+    removeClass: function (element, classToRemove) {
         if (!(element instanceof HTMLElement) || !element.classList.contains(classToRemove)) {
             return false;
         }
@@ -41,31 +43,57 @@ var Utils = {
     }
 };
 
-var Messages = {
-    newMessage: function(messageText, styleClass) {
-        var box = document.getElementById("message_box");
-        var messageView = document.getElementById("message_view");
+function Messages(messageTimeout) {
 
-        var message = document.createElement("div");
-        message.innerHTML = messageView.innerHTML;
+    var messageBox = document.getElementById("message_box");
+    var messageView = document.getElementById("message_view");
 
-        box.appendChild(message);
+    var messageDOM = document.createElement("div");
+    messageDOM.innerHTML = messageView.innerHTML;
+    messageDOM = messageDOM.getElementsByClassName("message")[0];
 
-        var messageDiv = message.getElementsByClassName("message")[0];
-        if (styleClass && typeof(styleClass) === "string") {
-            messageDiv.classList.add(styleClass);
+    function closeMessage(message) {
+        if (messageBox.contains(message)) {
+            messageBox.removeChild(message);
         }
-        message.getElementsByClassName("message_text")[0].innerHTML = messageText;
-        message.getElementsByClassName("message_close")[0].onclick = function() {
-            box.removeChild(message);
-        };
-        messageDiv.classList.remove("hidden");
-    },
-
-    newError: function(text) {
-        this.newMessage(text, "message_error")
     }
-};
+
+    function closeMessageTimeout(message, timeBeforeClose) {
+        setTimeout(function() { closeMessage(message) }, timeBeforeClose);
+    }
+
+    function createNewMessage(text) {
+        var message = messageDOM.cloneNode(true);
+        var textNode = message.getElementsByClassName("message_text")[0];
+        var closeNode = message.getElementsByClassName("message_close")[0];
+
+        messageBox.appendChild(message);
+        textNode.innerHTML = text;
+        closeNode.onclick = function() {
+            closeMessage(message)
+        };
+
+        return message;
+    }
+
+    return {
+        newMessage: function (messageText, styleClass) {
+            var message = createNewMessage(messageText);
+
+            Utils.addClass(message, styleClass);
+            closeMessageTimeout(message, messageTimeout);
+            Utils.removeClass(message, "hidden");
+        },
+
+        newError: function(text) {
+            this.newMessage(text, "message_error")
+        },
+
+        newSuccess: function(text) {
+            this.newMessage(text, "message_success")
+        }
+    }
+}
 
 // SignedInView state
 function SignedInView(session) {
@@ -110,7 +138,7 @@ function WelcomeView(session) {
 
     function isPasswordLengthValid(password) {
         return (typeof(password) === "string" &&
-                password.length >= minPasswordLength)
+        password.length >= minPasswordLength)
     }
 
     function validateLoginForm() {
@@ -120,34 +148,39 @@ function WelcomeView(session) {
             Utils.removeClass(password, "invalid_input");
         } else {
             Utils.addClass(password, "invalid_input");
+            messages.newError("Password is empty or too short, try again!");
+
             return false;
         }
 
         return true;
     }
 
-	function validateSignupForm() {
+    function validateSignupForm() {
 
-		// password
-		var password = document.getElementById("password");
-		var repeatPassword = document.getElementById("repeat_password");
-		if (password.value && isPasswordLengthValid(password.value) && (password.value === repeatPassword.value)) {
-			Utils.removeClass(password, "invalid_input");
+        // password
+        var password = document.getElementById("password");
+        var repeatPassword = document.getElementById("repeat_password");
+        if (password.value && isPasswordLengthValid(password.value) && (password.value === repeatPassword.value)) {
+            Utils.removeClass(password, "invalid_input");
             Utils.removeClass(repeatPassword, "invalid_input");
-		} else {
+        } else {
             Utils.addClass(password, "invalid_input");
             Utils.addClass(repeatPassword, "invalid_input");
+            messages.newError("Password input is invalid, be sure to have a valid (more than " +
+                minPasswordLength + " characters) and that both field are the same!");
+
             return false;
         }
 
         return true;
     }
 
-	function addEvents() {
+    function addEvents() {
         var login = document.getElementById("login");
-		var signup = document.getElementById("signup");
+        var signup = document.getElementById("signup");
 
-        login.onsubmit = function(e) {
+        login.onsubmit = function (e) {
             if (validateLoginForm()) {
                 var userEmail = document.getElementById("user_email");
                 var userPassword = document.getElementById("user_password");
@@ -170,8 +203,9 @@ function WelcomeView(session) {
                     country: document.getElementById("country").value
                 };
 
-                Messages.newMessage(serverstub.signUp(signUpForm).message);
+                session.signUp(signUpForm);
             }
+
             return false;
         };
     }
@@ -198,36 +232,47 @@ function Session(server, notifySessionChange) {
     }
 
     return {
-        signIn: function(username, password) {
+        signUp: function (userForm) {
+            var response = server.signUp(userForm);
+
+            if (response.success) {
+                messages.newSuccess(response.message);
+                this.signIn(userForm.email, userForm.password);
+            } else {
+                messages.newError(response.message);
+            }
+        },
+
+        signIn: function (username, password) {
             var response = server.signIn(username, password);
             if (response.success) {
                 changeToken(response.data);
                 notifySessionChange();
             }
 
-            return { success: response.success, message: response.message };
+            return {success: response.success, message: response.message};
         },
 
-        isSignedIn: function() {
+        isSignedIn: function () {
             var response = server.getUserMessagesByToken(sessionToken);
             return response.success;
         },
 
-        signOut: function() {
+        signOut: function () {
             server.signOut(sessionToken);
             notifySessionChange();
         }
     }
-};
+}
 
-function displayMessage(message){
+function displayMessage(message) {
     var messageElement = document.getElementById("message");
     messageElement.innerHTML = message;
     Utils.removeClass(messageElement.parentNode, "hidden");
 }
 
 // Main "refresh" of the website
-var displayView = function() {
+var displayView = function () {
     if (session.isSignedIn()) {
         signedInView.displayView();
     } else {
@@ -235,10 +280,13 @@ var displayView = function() {
     }
 };
 
-window.onload = function() {
+// "App" constructor
+window.onload = function () {
+    messages = new Messages(5000);
+
     session = new Session(serverstub, displayView);
     signedInView = new SignedInView(session);
     welcomeView = new WelcomeView(session);
 
-	displayView();
+    displayView();
 };
