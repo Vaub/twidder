@@ -160,7 +160,7 @@ function SignedInView(session) {
             createAccountTabEvents();
         }
     }
-};
+}
 
 // WelcomeView state
 function WelcomeView(session) {
