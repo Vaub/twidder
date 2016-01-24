@@ -1,5 +1,15 @@
 html, body {
+    font-size: 14px;
+    font-family: Helvetica, Arial, sans-serif;
     background-color: cornflowerblue;
+}
+
+h1 {
+    border-bottom: 1px solid rgb(200,200,200);
+    padding-bottom: 10px;
+
+    margin: 5px 0 5px;
+    font-size: 1.7em;
 }
 
 .welcome_section form{
@@ -122,7 +132,6 @@ header {
 }
 
 section {
-    padding: 10px;
     background: white;
     margin-bottom: 10px;
 }
@@ -133,6 +142,10 @@ footer {
     font-size: 0.8em;
     font-style: italic;
     margin-bottom: 10px;
+}
+
+.panel {
+    padding: 20px;
 }
 
 .menu {
@@ -170,10 +183,6 @@ footer {
     border-color: orange;
 }
 
-.panel h1 {
-    border-bottom: 1px solid rgb(125,125,125);
-}
-
 .home_container {
     display: flex;
 }
@@ -196,6 +205,7 @@ footer {
     font-size: 1.1em;
     font-weight: bold;
     margin-bottom: 10px;
+    overflow-x: scroll;
 }
 
 .post_message {
@@ -229,7 +239,19 @@ footer {
     background-color: transparent;
 }
 
+.post > .post_text {
+    margin-bottom: 2px;
+}
+
 .post > .post_user {
     font-style: italic;
     font-size: 0.8em;
+}
+
+.btn {
+    padding: 5px;
+
+    background: rgb(250,250,250);
+    border: 2px solid rgb(175,175,175);
+    border-radius: 5px;
 }
