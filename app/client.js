@@ -59,7 +59,9 @@ function Messages(messageTimeout) {
     }
 
     function closeMessageTimeout(message, timeBeforeClose) {
-        setTimeout(function() { closeMessage(message) }, timeBeforeClose);
+        setTimeout(function () {
+            closeMessage(message)
+        }, timeBeforeClose);
     }
 
     function createNewMessage(text) {
@@ -69,7 +71,7 @@ function Messages(messageTimeout) {
 
         messageBox.appendChild(message);
         textNode.innerHTML = text;
-        closeNode.onclick = function() {
+        closeNode.onclick = function () {
             closeMessage(message)
         };
 
@@ -85,12 +87,21 @@ function Messages(messageTimeout) {
             Utils.removeClass(message, "hidden");
         },
 
-        newError: function(text) {
+        newError: function (text) {
             this.newMessage(text, "message_error")
         },
 
-        newSuccess: function(text) {
+        newSuccess: function (text) {
             this.newMessage(text, "message_success")
+        },
+
+        newStatusMessage: function(text, success){
+            if(success){
+                this.newSuccess(text);
+            }
+            else{
+                this.newError(text);
+            }
         }
     }
 }
@@ -98,7 +109,7 @@ function Messages(messageTimeout) {
 // SignedInView state
 function SignedInView(session) {
 
-    function displayTab(currentTabId, selectedTabId){
+    function displayTab(currentTabId, selectedTabId) {
         var currentTab = document.getElementById(currentTabId);
         var selectedTab = document.getElementById(selectedTabId);
 
@@ -106,11 +117,11 @@ function SignedInView(session) {
         Utils.removeClass(selectedTab, "hidden");
     }
 
-    function createTabEvents(){
+    function createTabEvents() {
         var tabs = document.getElementsByClassName("menu_tab");
 
-        Array.prototype.forEach.call(tabs, function(tab){
-            tab.onclick = function(){
+        Array.prototype.forEach.call(tabs, function (tab) {
+            tab.onclick = function () {
                 var currentTab = document.getElementsByClassName("selected")[0];
                 var currentTabId = currentTab.getAttribute("rel");
                 var selectedTabId = tab.getAttribute("rel");
@@ -123,10 +134,30 @@ function SignedInView(session) {
         });
     }
 
+    function createAccountTabEvents() {
+        var changePasswordForm = document.getElementById("change_password");
+        var signOut = document.getElementById("sign_out");
+
+        changePasswordForm.onsubmit = function () {
+            var oldPassword = document.getElementById("old_password").value;
+            var newPassword = document.getElementById("new_password").value;
+            var response = session.changePassword(oldPassword, newPassword);
+
+            messages.newStatusMessage(response.message, response.success);
+
+            return false;
+        };
+
+        signOut.onclick = function(){
+            session.signOut();
+        }
+    }
+
     return {
-        displayView: function() {
+        displayView: function () {
             ViewUtils.displayViewFromId("login_view", "current_view");
             createTabEvents();
+            createAccountTabEvents();
         }
     }
 };
@@ -261,6 +292,11 @@ function Session(server, notifySessionChange) {
         signOut: function () {
             server.signOut(sessionToken);
             notifySessionChange();
+        },
+
+        changePassword: function (oldPassword, newPassword) {
+            var response = server.changePassword(sessionToken, oldPassword, newPassword);
+            return {success: response.success, message: response.message};
         }
     }
 }
