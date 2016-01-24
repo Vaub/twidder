@@ -21,6 +21,18 @@ var ViewUtils = {
         }
 
         view.innerHTML = viewToDisplay.innerHTML;
+    },
+
+    createElementFromView: function(viewId, withClass) {
+        var view = document.getElementById(viewId);
+        var element = document.createElement("div");
+
+        element.innerHTML = view.innerHTML;
+        if (withClass && typeof(withClass) === "string") {
+            Utils.addClass(element, withClass);
+        }
+
+        return element;
     }
 };
 
@@ -40,6 +52,16 @@ var Utils = {
             return false;
         }
         element.classList.remove(classToRemove);
+    },
+
+    removeAllChilds: function(element) {
+        if (!(element instanceof HTMLElement)) {
+            return false;
+        }
+
+        while (element.firstChild) {
+            element.removeChild(element.firstChild);
+        }
     }
 };
 
@@ -98,6 +120,9 @@ function Messages(messageTimeout) {
 // SignedInView state
 function SignedInView(session) {
 
+    var profileNode = ViewUtils.createElementFromView("profile_view");
+    var postNode = ViewUtils.createElementFromView("post_view", "post");
+
     function displayTab(currentTabId, selectedTabId){
         var currentTab = document.getElementById(currentTabId);
         var selectedTab = document.getElementById(selectedTabId);
@@ -123,10 +148,78 @@ function SignedInView(session) {
         });
     }
 
+    function populateHomeTab() {
+        var response = session.getCurrentUserData();
+
+        if (!response.success) { // just in case
+            messages.newError(response.message);
+            return false;
+        }
+
+        var data = response.data;
+        var profile = profileNode.cloneNode(true);
+        var profileContainer = document.getElementById("home_profile");
+
+        profile.getElementsByClassName("profile_email")[0].innerHTML = data.email;
+        profile.getElementsByClassName("profile_name")[0].innerHTML = data.firstname +" "+ data.familyname;
+        profile.getElementsByClassName("profile_gender")[0].innerHTML = (data.gender === "m") ? "Male" : "Female";
+        profile.getElementsByClassName("profile_city")[0].innerHTML = data.city;
+        profile.getElementsByClassName("profile_country")[0].innerHTML = data.country;
+
+        profileContainer.appendChild(profile);
+    }
+
+    function refreshHomeWall() {
+        var response = session.getCurrentUserMessages();
+        if (!response.success) {
+            messages.newError(response.message);
+        }
+
+        var newWall = document.createElement("div");
+        newWall.classList.add("post_wall");
+
+        var posts = response.data || [];
+        Array.prototype.forEach.call(posts, function(post) {
+            var newPostNode = postNode.cloneNode(true);
+            newPostNode.getElementsByClassName("post_text")[0].innerHTML = post.content;
+            newPostNode.getElementsByClassName("post_user")[0].innerHTML = "by "+ post.writer;
+            newWall.appendChild(newPostNode);
+        });
+
+        var homeWall = document.getElementById("home_wall");
+        Utils.removeAllChilds(homeWall);
+        homeWall.appendChild(newWall);
+    }
+
+    function createHomeEvents() {
+        var homePost = document.getElementById("home_post_message");
+
+        homePost.onsubmit = function() {
+            var content = document.getElementById("home_post_textarea");
+            if (content && content.value) {
+                var response = session.postMessageOnWall(content.value);
+                if (response.success) {
+                    content.value = "";
+                    messages.newSuccess(response.message);
+                    refreshHomeWall();
+                } else {
+                    messages.newError(response.message);
+                }
+            } else {
+                messages.newError("Cannot post empty messages!")
+            }
+
+            return false;
+        }
+    }
+
     return {
         displayView: function() {
             ViewUtils.displayViewFromId("login_view", "current_view");
             createTabEvents();
+            populateHomeTab();
+            createHomeEvents();
+            refreshHomeWall();
         }
     }
 }
@@ -216,7 +309,7 @@ function WelcomeView(session) {
             addEvents();
         }
     };
-};
+}
 
 // Session encapsulate the current session state.
 // Upon changes to this state, it'll use the notifySessionChange method
@@ -261,6 +354,28 @@ function Session(server, notifySessionChange) {
         signOut: function () {
             server.signOut(sessionToken);
             notifySessionChange();
+        },
+
+        getCurrentUserData: function() {
+            return server.getUserDataByToken(sessionToken);
+        },
+
+        getCurrentUserMessages: function () {
+            return server.getUserMessagesByToken(sessionToken);
+        },
+
+        postMessage: function(message, toEmail) {
+            return server.postMessage(sessionToken, message, toEmail);
+        },
+
+        postMessageOnWall: function(message) {
+            var response = this.getCurrentUserData();
+            if (!response.success) {
+                return { success: response.success, message: response.message }
+            }
+
+            var email = response.data.email;
+            return this.postMessage(message, email);
         }
     }
 }

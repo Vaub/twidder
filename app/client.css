@@ -27,10 +27,6 @@ abbr{
     text-decoration: underline;
 }
 
-h2{
-    text-align: center;
-}
-
 .welcome_section{
     background-color: white;
 }
@@ -136,6 +132,7 @@ footer {
     padding: 10px;
     font-size: 0.8em;
     font-style: italic;
+    margin-bottom: 10px;
 }
 
 .menu {
@@ -175,4 +172,64 @@ footer {
 
 .panel h1 {
     border-bottom: 1px solid rgb(125,125,125);
+}
+
+.home_container {
+    display: flex;
+}
+
+.home_content {
+    flex: 2.5 0 0;
+    margin-right: 20px;
+}
+
+.home_information {
+    flex: 1 0 0;
+}
+
+.profile_title {
+    font-size: 0.9em;
+    margin-bottom: 2px;
+}
+
+.profile_info {
+    font-size: 1.1em;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.post_message {
+    display: flex;
+    min-height: 35px;
+}
+
+.post_message > input {
+    flex: 1 0 0;
+    display: inline-block;
+}
+
+.post_message > textarea {
+    flex: 4 0 0;
+    margin-right: 10px;
+    width: 100%;
+    display: inline-block;
+}
+
+.post_wall {
+    max-height: 720px;
+    overflow-y: scroll;
+}
+
+.post {
+    padding: 10px;
+    background-color: rgb(235,235,235);
+}
+
+.post:nth-child(even) {
+    background-color: transparent;
+}
+
+.post > .post_user {
+    font-style: italic;
+    font-size: 0.8em;
 }
