@@ -23,6 +23,8 @@ var ViewUtils = {
         view.innerHTML = viewToDisplay.innerHTML;
     },
 
+    // Use the view to create a <div> encapsulating an element.
+    // Can optionally give it a class
     createElementFromView: function(viewId, withClass) {
         var view = document.getElementById(viewId);
         var element = document.createElement("div");
@@ -54,7 +56,8 @@ var Utils = {
         element.classList.remove(classToRemove);
     },
 
-    removeAllChilds: function(element) {
+    // Remove all child from an HTMLElement
+    removeAllChild: function(element) {
         if (!(element instanceof HTMLElement)) {
             return false;
         }
@@ -65,6 +68,7 @@ var Utils = {
     }
 };
 
+// Creates messages (alerts) for the website no matter the view
 function Messages(messageTimeout) {
 
     var messageBox = document.getElementById("message_box");
@@ -217,24 +221,24 @@ function SignedInView(session) {
         });
 
         var homeWall = document.getElementById("home_wall");
-        Utils.removeAllChilds(homeWall);
+        Utils.removeAllChild(homeWall);
         homeWall.appendChild(newWall);
     }
 
-    function createHomeEvents() {
+    function createHomeTabEvents() {
         var homePost = document.getElementById("home_post_message");
 
         homePost.onsubmit = function() {
             var content = document.getElementById("home_post_textarea");
+
             if (content && content.value) {
                 var response = session.postMessageOnWall(content.value);
                 if (response.success) {
                     content.value = "";
-                    messages.newSuccess(response.message);
                     refreshHomeWall();
-                } else {
-                    messages.newError(response.message);
                 }
+
+                messages.newStatusMessage(response.message, response.success);
             } else {
                 messages.newError("Cannot post empty messages!")
             }
@@ -243,13 +247,17 @@ function SignedInView(session) {
         }
     }
 
+    function initializeView() {
+        createTabEvents();
+        createAccountTabEvents();
+        populateHomeTab();
+        createHomeTabEvents();
+    }
+
     return {
         displayView: function () {
             ViewUtils.displayViewFromId("login_view", "current_view");
-            createTabEvents();
-            createAccountTabEvents();
-            populateHomeTab();
-            createHomeEvents();
+            initializeView();
             refreshHomeWall();
         }
     }
@@ -265,8 +273,8 @@ function WelcomeView(session) {
         password.length >= minPasswordLength)
     }
 
-    function validateLoginForm() {
-        var password = document.getElementById("user_password");
+    function validateLoginForm(form) {
+        var password = form.user_password;
 
         if (password && isPasswordLengthValid(password.value)) {
             Utils.removeClass(password, "invalid_input");
@@ -280,11 +288,11 @@ function WelcomeView(session) {
         return true;
     }
 
-    function validateSignupForm() {
+    function validateSignupFormData(form) {
 
         // password
-        var password = document.getElementById("password");
-        var repeatPassword = document.getElementById("repeat_password");
+        var password = form.password;
+        var repeatPassword = form.repeat_password;
         if (password.value && isPasswordLengthValid(password.value) && (password.value === repeatPassword.value)) {
             Utils.removeClass(password, "invalid_input");
             Utils.removeClass(repeatPassword, "invalid_input");
@@ -304,27 +312,31 @@ function WelcomeView(session) {
         var login = document.getElementById("login");
         var signup = document.getElementById("signup");
 
-        login.onsubmit = function (e) {
-            if (validateLoginForm()) {
-                var userEmail = document.getElementById("user_email");
-                var userPassword = document.getElementById("user_password");
-                session.signIn(userEmail.value, userPassword.value)
+        login.onsubmit = function () {
+            if (validateLoginForm(login)) {
+                var userEmail = login.user_email;
+                var userPassword = login.user_password;
+
+                var response = session.signIn(userEmail.value, userPassword.value)
+                if (!response.success) {
+                    messages.newError(response.message);
+                }
             }
 
             return false;
         };
 
-        signup.onsubmit = function (e) {
-            if (validateSignupForm()) {
+        signup.onsubmit = function () {
+            if (validateSignupFormData(signup)) {
 
                 var signUpForm = {
-                    email: document.getElementById("username").value,
-                    password: document.getElementById("password").value,
-                    firstname: document.getElementById("first_name").value,
-                    familyname: document.getElementById("family_name").value,
-                    gender: document.getElementById("gender").value,
-                    city: document.getElementById("city").value,
-                    country: document.getElementById("country").value
+                    email: signup.username.value,
+                    password: signup.password.value,
+                    firstname: signup.first_name.value,
+                    familyname: signup.family_name.value,
+                    gender: signup.gender.value,
+                    city: signup.city.value,
+                    country: signup.country.value
                 };
 
                 session.signUp(signUpForm);

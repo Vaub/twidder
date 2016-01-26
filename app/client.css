@@ -12,6 +12,11 @@ h1 {
     font-size: 1.7em;
 }
 
+.welcome_section .btn {
+    display: block;
+    margin: auto;
+}
+
 .welcome_section form{
     margin: 5px;
 }
@@ -20,11 +25,6 @@ h1 {
     float: left;
     display: inline-block;
     width: 100px;
-}
-
-.welcome_section input[type="submit"]{
-    float: right;
-    width: 70px;
 }
 
 .welcome_section input, .welcome_section select{
@@ -59,13 +59,28 @@ abbr{
     margin-bottom: 10px;
     width: 250px;
     float: right;
-    height: 20%;
+    height: 90px;
 }
 
 #signup_form{
     float: right;
     width: 250px;
-    height: 77.5%;
+    height: 300px;
+}
+
+#login_form .btn, #signup_form .btn {
+    height: 30px;
+    margin-top: 2px;
+
+    font-weight: bold;
+}
+
+#signup_form .btn {
+    margin-top: 12px;
+}
+
+#signup_form h2 {
+    text-align: center;
 }
 
 .invalid_input {
@@ -211,6 +226,7 @@ footer {
 .post_message {
     display: flex;
     min-height: 35px;
+    margin-bottom: 10px;
 }
 
 .post_message > input {
