@@ -227,6 +227,7 @@ function SignedInView(session) {
 
     function createHomeTabEvents() {
         var homePost = document.getElementById("home_post_message");
+        var homeRefreshWall = document.getElementById("home_refresh_wall");
 
         homePost.onsubmit = function() {
             var content = document.getElementById("home_post_textarea");
@@ -244,6 +245,10 @@ function SignedInView(session) {
             }
 
             return false;
+        };
+
+        homeRefreshWall.onclick = function() {
+            refreshHomeWall();
         }
     }
 
@@ -317,7 +322,7 @@ function WelcomeView(session) {
                 var userEmail = login.user_email;
                 var userPassword = login.user_password;
 
-                var response = session.signIn(userEmail.value, userPassword.value)
+                var response = session.signIn(userEmail.value, userPassword.value);
                 if (!response.success) {
                     messages.newError(response.message);
                 }

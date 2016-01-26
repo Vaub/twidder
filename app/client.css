@@ -220,7 +220,7 @@ footer {
     font-size: 1.1em;
     font-weight: bold;
     margin-bottom: 10px;
-    overflow-x: scroll;
+    overflow-x: hidden;
 }
 
 .post_message {
@@ -270,4 +270,18 @@ footer {
     background: rgb(250,250,250);
     border: 2px solid rgb(175,175,175);
     border-radius: 5px;
+}
+
+.title {
+    display: flex;
+}
+
+.title > h1, .title > h2, .title > h3 {
+    flex-grow: 1;
+}
+
+.title > .actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
