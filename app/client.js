@@ -245,15 +245,23 @@ function SignedInView(session) {
         homeWall.appendChild(newWall);
     }
 
-    function refreshBrowseWall(wall, data){
-        var newWall = fillWall(data);
+    function refreshBrowseWall(wall, email){
+        var response = session.getOtherUserMessagesByEmail(email);
 
-        Utils.removeAllChild(wall);
-        wall.appendChild(newWall);
+        if(response.success){
+            var newWall = fillWall(response.data);
+            Utils.removeAllChild(wall);
+            wall.appendChild(newWall);
+
+            messages.newSuccess(response.message);
+        }
+        else{
+            messages.newSuccess(response.message);
+        }
     }
 
     function createHomeTabEvents() {
-        var homePost = document.getElementById("home_post_message");
+        var homePost = document.getElementsByClassName("home_post_message")[0];
         var homeRefreshWall = document.getElementById("home_refresh_wall");
 
         homePost.onsubmit = function() {
@@ -280,25 +288,41 @@ function SignedInView(session) {
     }
 
     function createBrowseTabEvents(){
+        var email;
+        var otherUserHome = templateHomeNode.cloneNode(true);
         var searchForm = document.getElementById("search_form");
+        var postForm = otherUserHome.getElementsByClassName("home_post_message")[0];
+        var homeWall = otherUserHome.getElementsByClassName("home_wall")[0];
+
+        postForm.onsubmit = function(){
+            var content = postForm.postContent.value;
+
+            if(content){
+                var response = session.postMessage(content, email);
+                if(response.success){
+                    refreshBrowseWall(homeWall, email);
+                    messages.newSuccess(response.message);
+                }
+                else{
+                    messages.newError(response.message);
+                }
+            }
+
+            return false;
+        }
 
         searchForm.onsubmit = function(){
-            var email = searchForm.otherUsername.value;
+            email = searchForm.otherUsername.value;
             var response = session.getOtherUserDataByEmail(email);
 
             if(response.success){
                 var data = response.data;
-                var userMessages = session.getOtherUserMessagesByEmail(email).data;
-                var otherUserHome = templateHomeNode.cloneNode(true);
                 var homeContainer = document.getElementById("other_user_home");
-                var homeWall = otherUserHome.getElementsByClassName("home_wall")[0];
 
                 populateProfile(data, otherUserHome);
-
                 Utils.removeAllChild(homeContainer);
                 homeContainer.appendChild(otherUserHome);
-
-                refreshBrowseWall(homeWall, userMessages);
+                refreshBrowseWall(homeWall, email);
 
                 messages.newSuccess(response.message);
             }
