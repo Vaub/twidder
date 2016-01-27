@@ -137,6 +137,9 @@ function SignedInView(session) {
 
     var profileNode = ViewUtils.createElementFromView("profile_view");
     var postNode = ViewUtils.createElementFromView("post_view", "post");
+    var templateHomeNode = ViewUtils.createElementFromView("template_home_view");
+
+    var home = templateHomeNode.cloneNode(true);
 
     function displayTab(currentTabId, selectedTabId){
         var currentTab = document.getElementById(currentTabId);
@@ -182,6 +185,21 @@ function SignedInView(session) {
         }
     }
 
+    function populateProfile(data, userHome){
+
+        var profile = profileNode.cloneNode(true);
+        var profileContainer = userHome.getElementsByClassName("home_profile")[0];
+
+        profile.getElementsByClassName("profile_email")[0].innerHTML = data.email;
+        profile.getElementsByClassName("profile_name")[0].innerHTML = data.firstname +" "+ data.familyname;
+        profile.getElementsByClassName("profile_gender")[0].innerHTML = (data.gender === "m") ? "Male" : "Female";
+        profile.getElementsByClassName("profile_city")[0].innerHTML = data.city;
+        profile.getElementsByClassName("profile_country")[0].innerHTML = data.country;
+
+        Utils.removeAllChild(profileContainer);
+        profileContainer.appendChild(profile);
+    }
+
     function populateHomeTab() {
         var response = session.getCurrentUserData();
 
@@ -191,16 +209,27 @@ function SignedInView(session) {
         }
 
         var data = response.data;
-        var profile = profileNode.cloneNode(true);
-        var profileContainer = document.getElementById("home_profile");
+        var homeContainer = document.getElementById("home");
 
-        profile.getElementsByClassName("profile_email")[0].innerHTML = data.email;
-        profile.getElementsByClassName("profile_name")[0].innerHTML = data.firstname +" "+ data.familyname;
-        profile.getElementsByClassName("profile_gender")[0].innerHTML = (data.gender === "m") ? "Male" : "Female";
-        profile.getElementsByClassName("profile_city")[0].innerHTML = data.city;
-        profile.getElementsByClassName("profile_country")[0].innerHTML = data.country;
+        populateProfile(data, home);
 
-        profileContainer.appendChild(profile);
+        homeContainer.appendChild(home);
+    }
+
+    function fillWall(data){
+
+        var newWall = document.createElement("div");
+        newWall.classList.add("post_wall");
+
+        var posts = data || [];
+        Array.prototype.forEach.call(posts, function(post) {
+            var newPostNode = postNode.cloneNode(true);
+            newPostNode.getElementsByClassName("post_text")[0].innerHTML = post.content;
+            newPostNode.getElementsByClassName("post_user")[0].innerHTML = "by "+ post.writer;
+            newWall.appendChild(newPostNode);
+        });
+
+        return newWall;
     }
 
     function refreshHomeWall() {
@@ -209,20 +238,18 @@ function SignedInView(session) {
             messages.newError(response.message);
         }
 
-        var newWall = document.createElement("div");
-        newWall.classList.add("post_wall");
+        var newWall = fillWall(response.data);
+        var homeWall = home.getElementsByClassName("home_wall")[0];
 
-        var posts = response.data || [];
-        Array.prototype.forEach.call(posts, function(post) {
-            var newPostNode = postNode.cloneNode(true);
-            newPostNode.getElementsByClassName("post_text")[0].innerHTML = post.content;
-            newPostNode.getElementsByClassName("post_user")[0].innerHTML = "by "+ post.writer;
-            newWall.appendChild(newPostNode);
-        });
-
-        var homeWall = document.getElementById("home_wall");
         Utils.removeAllChild(homeWall);
         homeWall.appendChild(newWall);
+    }
+
+    function refreshBrowseWall(wall, data){
+        var newWall = fillWall(data);
+
+        Utils.removeAllChild(wall);
+        wall.appendChild(newWall);
     }
 
     function createHomeTabEvents() {
@@ -247,9 +274,40 @@ function SignedInView(session) {
             return false;
         };
 
-        homeRefreshWall.onclick = function() {
+            homeRefreshWall.onclick = function() {
             refreshHomeWall();
         }
+    }
+
+    function createBrowseTabEvents(){
+        var searchForm = document.getElementById("search_form");
+
+        searchForm.onsubmit = function(){
+            var email = searchForm.otherUsername.value;
+            var response = session.getOtherUserDataByEmail(email);
+
+            if(response.success){
+                var data = response.data;
+                var userMessages = session.getOtherUserMessagesByEmail(email).data;
+                var otherUserHome = templateHomeNode.cloneNode(true);
+                var homeContainer = document.getElementById("other_user_home");
+                var homeWall = otherUserHome.getElementsByClassName("home_wall")[0];
+
+                populateProfile(data, otherUserHome);
+
+                Utils.removeAllChild(homeContainer);
+                homeContainer.appendChild(otherUserHome);
+
+                refreshBrowseWall(homeWall, userMessages);
+
+                messages.newSuccess(response.message);
+            }
+            else{
+                messages.newError(response.message);
+            }
+
+            return false;
+        };
     }
 
     function initializeView() {
@@ -257,6 +315,7 @@ function SignedInView(session) {
         createAccountTabEvents();
         populateHomeTab();
         createHomeTabEvents();
+        createBrowseTabEvents();
     }
 
     return {
@@ -429,6 +488,14 @@ function Session(server, notifySessionChange) {
 
             var email = response.data.email;
             return this.postMessage(message, email);
+        },
+
+        getOtherUserDataByEmail: function(email){
+            return server.getUserDataByEmail(sessionToken, email);
+        },
+
+        getOtherUserMessagesByEmail: function(email){
+            return server.getUserMessagesByEmail(sessionToken, email);
         }
     }
 }
