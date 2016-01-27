@@ -265,7 +265,7 @@ function SignedInView(session) {
         var homeRefreshWall = document.getElementById("home_refresh_wall");
 
         homePost.onsubmit = function() {
-            var content = document.getElementById("home_post_textarea");
+            var content = document.getElementsByClassName("home_post_textarea")[0];
 
             if (content && content.value) {
                 var response = session.postMessageOnWall(content.value);
@@ -295,21 +295,22 @@ function SignedInView(session) {
         var homeWall = otherUserHome.getElementsByClassName("home_wall")[0];
 
         postForm.onsubmit = function(){
-            var content = postForm.postContent.value;
+            var content = otherUserHome.getElementsByClassName("home_post_textarea")[0];
 
-            if(content){
-                var response = session.postMessage(content, email);
+            if(content && content.value){
+                var response = session.postMessage(content.value, email);
                 if(response.success){
+                    content.value = "";
                     refreshBrowseWall(homeWall, email);
                     messages.newSuccess(response.message);
-                }
-                else{
+                } else {
                     messages.newError(response.message);
                 }
+            } else {
+                messages.newError("Cannot post empty messages!")
             }
-
             return false;
-        }
+        };
 
         searchForm.onsubmit = function(){
             email = searchForm.otherUsername.value;
@@ -325,8 +326,7 @@ function SignedInView(session) {
                 refreshBrowseWall(homeWall, email);
 
                 messages.newSuccess(response.message);
-            }
-            else{
+            } else {
                 messages.newError(response.message);
             }
 
