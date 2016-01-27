@@ -262,7 +262,7 @@ function SignedInView(session) {
 
     function createHomeTabEvents() {
         var homePost = document.getElementsByClassName("home_post_message")[0];
-        var homeRefreshWall = document.getElementById("home_refresh_wall");
+        var homeRefreshWall = document.getElementsByClassName("home_refresh_wall")[0];
 
         homePost.onsubmit = function() {
             var content = document.getElementsByClassName("home_post_textarea")[0];
@@ -293,6 +293,7 @@ function SignedInView(session) {
         var searchForm = document.getElementById("search_form");
         var postForm = otherUserHome.getElementsByClassName("home_post_message")[0];
         var homeWall = otherUserHome.getElementsByClassName("home_wall")[0];
+        var refreshTab = otherUserHome.getElementsByClassName("home_refresh_wall")[0];
 
         postForm.onsubmit = function(){
             var content = otherUserHome.getElementsByClassName("home_post_textarea")[0];
@@ -331,6 +332,10 @@ function SignedInView(session) {
             }
 
             return false;
+        };
+
+        refreshTab.onclick = function(){
+            refreshBrowseWall(homeWall, email);
         };
     }
 
