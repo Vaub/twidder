@@ -282,9 +282,9 @@ function SignedInView(session) {
             return false;
         };
 
-            homeRefreshWall.onclick = function() {
+        homeRefreshWall.onclick = function() {
             refreshHomeWall();
-        }
+        };
     }
 
     function createBrowseTabEvents(){
