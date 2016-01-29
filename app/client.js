@@ -65,6 +65,11 @@ var Utils = {
         while (element.firstChild) {
             element.removeChild(element.firstChild);
         }
+    },
+
+    isPasswordLengthValid: function(password){
+        var minPasswordLength = 6;
+        return (typeof(password) === "string" && password.length >= minPasswordLength);
     }
 };
 
@@ -192,7 +197,7 @@ function Wall(getProfileFunction, getMessagesFunction, postMessageFunction) {
 
         postForm.onsubmit = function() {
             if (postText.value && postMessage(postText.value)) {
-                var response
+                postText.value = "";
             }
 
             refreshWall();
@@ -261,11 +266,15 @@ function SignedInView(session) {
         var signOut = document.getElementById("sign_out");
 
         changePasswordForm.onsubmit = function () {
-            var oldPassword = document.getElementById("old_password").value;
-            var newPassword = document.getElementById("new_password").value;
-            var response = session.changePassword(oldPassword, newPassword);
+            var oldPassword = changePasswordForm.oldPassword.value;
+            var newPassword = changePasswordForm.newPassword.value;
 
-            messages.newStatusMessage(response.message, response.success);
+            if(Utils.isPasswordLengthValid(newPassword)){
+                var response = session.changePassword(oldPassword, newPassword);
+                messages.newStatusMessage(response.message, response.success);
+            } else {
+                messages.newError("Password is empty or too short, try again!");
+            }
 
             return false;
         };
@@ -315,7 +324,6 @@ function SignedInView(session) {
     function initializeView() {
         createTabEvents();
         createAccountTabEvents();
-
         createHomeTab();
         createBrowseTab();
     }
@@ -331,17 +339,10 @@ function SignedInView(session) {
 // WelcomeView state
 function WelcomeView(session) {
 
-    var minPasswordLength = 6;
-
-    function isPasswordLengthValid(password) {
-        return (typeof(password) === "string" &&
-        password.length >= minPasswordLength)
-    }
-
     function validateLoginForm(form) {
         var password = form.user_password;
 
-        if (password && isPasswordLengthValid(password.value)) {
+        if (password && Utils.isPasswordLengthValid(password.value)) {
             Utils.removeClass(password, "invalid_input");
         } else {
             Utils.addClass(password, "invalid_input");
@@ -358,7 +359,7 @@ function WelcomeView(session) {
         // password
         var password = form.password;
         var repeatPassword = form.repeat_password;
-        if (password.value && isPasswordLengthValid(password.value) && (password.value === repeatPassword.value)) {
+        if (password.value && Utils.isPasswordLengthValid(password.value) && (password.value === repeatPassword.value)) {
             Utils.removeClass(password, "invalid_input");
             Utils.removeClass(repeatPassword, "invalid_input");
         } else {
@@ -437,11 +438,9 @@ function Session(server, notifySessionChange) {
             var response = server.signUp(userForm);
 
             if (response.success) {
-                messages.newSuccess(response.message);
                 this.signIn(userForm.email, userForm.password);
-            } else {
-                messages.newError(response.message);
             }
+            messages.newStatusMessage(response.message, response.success);
         },
 
         signIn: function (username, password) {
