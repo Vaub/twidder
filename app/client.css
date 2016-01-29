@@ -194,16 +194,16 @@ footer {
     border-color: orange;
 }
 
-.home_container {
+.wall_container {
     display: flex;
 }
 
-.home_content {
+.wall_content {
     flex: 2.5 0 0;
     margin-right: 20px;
 }
 
-.home_information {
+.wall_profile {
     flex: 1 0 0;
 }
 

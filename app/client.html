@@ -78,6 +78,8 @@
 			<section>
 			    <div id="home" class="panel">
 			        <h1>Home</h1>
+			        <div id="home_view_container">
+			        </div>
 			    </div>
 			    <div id="browse" class="panel hidden">
 			        <h1>Browse</h1>
@@ -85,7 +87,7 @@
 			        	<input type="email" name="otherUsername" required />
 			        	<input type="submit" class="btn" value="Search">
 					</form>
-					<div id="other_user_home">
+					<div id="browse_view_container">
 					</div>
 			    </div>
 			    <div id="account" class="panel hidden">
@@ -115,48 +117,44 @@
 				<div class="message_text"></div>
 			</div>
 		</script>
-		<script id="profile_view" type="text/view">
-			<div class="profile">
-				<div class="profile_title">Email</div>
-				<div class="profile_info profile_email" name="email"></div>
-
-				<div class="profile_title">Name</div>
-				<div class="profile_info profile_name" name="full_name"></div>
-
-				<div class="profile_title">Gender</div>
-				<div class="profile_info profile_gender" name="gender"></div>
-
-				<div class="profile_title">City</div>
-				<div class="profile_info profile_city" name="city"></div>
-
-				<div class="profile_title">Country</div>
-				<div class="profile_info profile_country" name="country"></div>
-			</div>
-		</script>
 		<script id="post_view" type="text/view">
 			<div class="post_text"></div>
 			<div class="post_user"></div>
 		</script>
 		<script id="template_home_view" type="text/view">
-            <div class="home_container">
-                <div class="home_content">
+            <div class="wall_container">
+                <div class="wall_content">
                     <div class="title">
                         <h2>My posts</h2>
                         <div class="actions">
-                            <button class="btn home_refresh_wall">Refresh</button>
+                            <button class="btn wall_refresh">Refresh</button>
                         </div>
                     </div>
-                    <form class="home_post_message post_message">
+                    <form class="wall_post_message post_message">
                         <textarea class="home_post_textarea" placeholder="What are your thoughts..."></textarea>
                         <input type="submit" class="btn" value="Send" />
                     </form>
                     <div class="home_wall">
                     </div>
                 </div>
-                <div class="home_information">
+                <div class="wall_profile">
                     <h2>Profile</h2>
-                    <div class="home_profile">
-                    </div>
+                    <div class="profile">
+						<div class="profile_title">Email</div>
+						<div class="profile_info profile_email" name="email"></div>
+
+						<div class="profile_title">Name</div>
+						<div class="profile_info profile_name" name="full_name"></div>
+
+						<div class="profile_title">Gender</div>
+						<div class="profile_info profile_gender" name="gender"></div>
+
+						<div class="profile_title">City</div>
+						<div class="profile_info profile_city" name="city"></div>
+
+						<div class="profile_title">Country</div>
+						<div class="profile_info profile_country" name="country"></div>
+					</div>
                 </div>
             </div>
 		</script>

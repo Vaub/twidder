@@ -132,14 +132,104 @@ function Messages(messageTimeout) {
     }
 }
 
+function Wall(getProfileFunction, getMessagesFunction, postMessageFunction) {
+
+    var wallNode = ViewUtils.createElementFromView("template_home_view");
+    var postNode = ViewUtils.createElementFromView("post_view", "post");
+
+    var wall = wallNode.getElementsByClassName("home_wall")[0];
+    var profile = wallNode.getElementsByClassName("profile")[0];
+    var postText = wallNode.getElementsByClassName("home_post_textarea")[0];
+
+    function populateProfile(data) {
+        var profile = wallNode.getElementsByClassName("profile")[0];
+
+        profile.getElementsByClassName("profile_email")[0].innerHTML = data.email;
+        profile.getElementsByClassName("profile_name")[0].innerHTML = data.firstname +" "+ data.familyname;
+        profile.getElementsByClassName("profile_gender")[0].innerHTML = (data.gender === "m") ? "Male" : "Female";
+        profile.getElementsByClassName("profile_city")[0].innerHTML = data.city;
+        profile.getElementsByClassName("profile_country")[0].innerHTML = data.country;
+    }
+
+    function fillWall(data) {
+        var newWall = document.createElement("div");
+        newWall.classList.add("post_wall");
+
+        var posts = data || [];
+        Array.prototype.forEach.call(posts, function(post) {
+            var newPostNode = postNode.cloneNode(true);
+            newPostNode.getElementsByClassName("post_text")[0].innerHTML = post.content;
+            newPostNode.getElementsByClassName("post_user")[0].innerHTML = "by "+ post.writer;
+            newWall.appendChild(newPostNode);
+        });
+
+        Utils.removeAllChild(wall);
+        wall.appendChild(newWall);
+    }
+
+    function refreshWall() {
+        var response = getMessagesFunction();
+        if (!response.success) {
+            messages.newError(response.message);
+            return false;
+        }
+
+        fillWall(response.data);
+    }
+
+    function postMessage(message) {
+        var response = postMessageFunction(message);
+        if (!response.success) {
+            message.newError(response.message);
+        }
+
+        return response.success;
+    }
+
+    function createHandlers() {
+        var postForm = wallNode.getElementsByClassName("wall_post_message")[0];
+        var refreshButton = wallNode.getElementsByClassName("wall_refresh")[0];
+
+        postForm.onsubmit = function() {
+            if (postText.value && postMessage(postText.value)) {
+                var response
+            }
+
+            refreshWall();
+            return false;
+        };
+
+        refreshButton.onclick = function() {
+            refreshWall();
+            return false;
+        };
+    }
+
+    function init() {
+        var messagesResponse = getMessagesFunction();
+        var profileResponse = getProfileFunction();
+        createHandlers();
+
+        if (profileResponse.success) {
+            populateProfile(profileResponse.data)
+        }
+
+        if (messagesResponse.success) {
+            fillWall(messagesResponse.data)
+        }
+    }
+
+    init();
+
+    return {
+        refreshWall: refreshWall,
+        element: wallNode
+    }
+
+}
+
 // SignedInView state
 function SignedInView(session) {
-
-    var profileNode = ViewUtils.createElementFromView("profile_view");
-    var postNode = ViewUtils.createElementFromView("post_view", "post");
-    var templateHomeNode = ViewUtils.createElementFromView("template_home_view");
-
-    var home = templateHomeNode.cloneNode(true);
 
     function displayTab(currentTabId, selectedTabId){
         var currentTab = document.getElementById(currentTabId);
@@ -185,173 +275,56 @@ function SignedInView(session) {
         }
     }
 
-    function populateProfile(data, userHome){
+    function createHomeTab() {
+        var homeViewContainer = document.getElementById("home_view_container");
 
-        var profile = profileNode.cloneNode(true);
-        var profileContainer = userHome.getElementsByClassName("home_profile")[0];
+        var getHomeProfile = function() { return session.getCurrentUserData(); };
+        var getHomeMessages = function() { return session.getCurrentUserMessages(); };
+        var postHomeMessage = function(message) { return session.postMessageOnWall(message) };
 
-        profile.getElementsByClassName("profile_email")[0].innerHTML = data.email;
-        profile.getElementsByClassName("profile_name")[0].innerHTML = data.firstname +" "+ data.familyname;
-        profile.getElementsByClassName("profile_gender")[0].innerHTML = (data.gender === "m") ? "Male" : "Female";
-        profile.getElementsByClassName("profile_city")[0].innerHTML = data.city;
-        profile.getElementsByClassName("profile_country")[0].innerHTML = data.country;
-
-        Utils.removeAllChild(profileContainer);
-        profileContainer.appendChild(profile);
+        var homeWall = new Wall(getHomeProfile, getHomeMessages, postHomeMessage);
+        Utils.removeAllChild(homeViewContainer);
+        homeViewContainer.appendChild(homeWall.element);
     }
 
-    function populateHomeTab() {
-        var response = session.getCurrentUserData();
-
-        if (!response.success) { // just in case
-            messages.newError(response.message);
-            return false;
-        }
-
-        var data = response.data;
-        var homeContainer = document.getElementById("home");
-
-        populateProfile(data, home);
-
-        homeContainer.appendChild(home);
-    }
-
-    function fillWall(data){
-
-        var newWall = document.createElement("div");
-        newWall.classList.add("post_wall");
-
-        var posts = data || [];
-        Array.prototype.forEach.call(posts, function(post) {
-            var newPostNode = postNode.cloneNode(true);
-            newPostNode.getElementsByClassName("post_text")[0].innerHTML = post.content;
-            newPostNode.getElementsByClassName("post_user")[0].innerHTML = "by "+ post.writer;
-            newWall.appendChild(newPostNode);
-        });
-
-        return newWall;
-    }
-
-    function refreshHomeWall() {
-        var response = session.getCurrentUserMessages();
-        if (!response.success) {
-            messages.newError(response.message);
-        }
-
-        var newWall = fillWall(response.data);
-        var homeWall = home.getElementsByClassName("home_wall")[0];
-
-        Utils.removeAllChild(homeWall);
-        homeWall.appendChild(newWall);
-    }
-
-    function refreshBrowseWall(wall, email){
-        var response = session.getOtherUserMessagesByEmail(email);
-
-        if(response.success){
-            var newWall = fillWall(response.data);
-            Utils.removeAllChild(wall);
-            wall.appendChild(newWall);
-
-            messages.newSuccess(response.message);
-        }
-        else{
-            messages.newSuccess(response.message);
-        }
-    }
-
-    function createHomeTabEvents() {
-        var homePost = document.getElementsByClassName("home_post_message")[0];
-        var homeRefreshWall = document.getElementsByClassName("home_refresh_wall")[0];
-
-        homePost.onsubmit = function() {
-            var content = document.getElementsByClassName("home_post_textarea")[0];
-
-            if (content && content.value) {
-                var response = session.postMessageOnWall(content.value);
-                if (response.success) {
-                    content.value = "";
-                    refreshHomeWall();
-                }
-
-                messages.newStatusMessage(response.message, response.success);
-            } else {
-                messages.newError("Cannot post empty messages!")
-            }
-
-            return false;
-        };
-
-        homeRefreshWall.onclick = function() {
-            refreshHomeWall();
-        };
-    }
-
-    function createBrowseTabEvents(){
-        var email;
-        var otherUserHome = templateHomeNode.cloneNode(true);
+    function createBrowseTab() {
+        var browseViewContainer = document.getElementById("browse_view_container");
         var searchForm = document.getElementById("search_form");
-        var postForm = otherUserHome.getElementsByClassName("home_post_message")[0];
-        var homeWall = otherUserHome.getElementsByClassName("home_wall")[0];
-        var refreshTab = otherUserHome.getElementsByClassName("home_refresh_wall")[0];
-
-        postForm.onsubmit = function(){
-            var content = otherUserHome.getElementsByClassName("home_post_textarea")[0];
-
-            if(content && content.value){
-                var response = session.postMessage(content.value, email);
-                if(response.success){
-                    content.value = "";
-                    refreshBrowseWall(homeWall, email);
-                    messages.newSuccess(response.message);
-                } else {
-                    messages.newError(response.message);
-                }
-            } else {
-                messages.newError("Cannot post empty messages!")
-            }
-            return false;
-        };
 
         searchForm.onsubmit = function(){
-            email = searchForm.otherUsername.value;
+            var email = searchForm.otherUsername.value;
             var response = session.getOtherUserDataByEmail(email);
 
             if(response.success){
-                var data = response.data;
-                var homeContainer = document.getElementById("other_user_home");
 
-                populateProfile(data, otherUserHome);
-                Utils.removeAllChild(homeContainer);
-                homeContainer.appendChild(otherUserHome);
-                refreshBrowseWall(homeWall, email);
+                var getBrowseProfile = function() { return session.getOtherUserDataByEmail(email); };
+                var getBrowseMessages = function() { return session.getOtherUserMessagesByEmail(email); };
+                var postBrowseMessage = function(message) { return session.postMessage(message, email); };
 
-                messages.newSuccess(response.message);
+                var browseWall = new Wall(getBrowseProfile, getBrowseMessages, postBrowseMessage);
+                Utils.removeAllChild(browseViewContainer);
+                browseViewContainer.appendChild(browseWall.element);
+
             } else {
                 messages.newError(response.message);
             }
 
             return false;
         };
-
-        refreshTab.onclick = function(){
-            refreshBrowseWall(homeWall, email);
-        };
     }
 
     function initializeView() {
         createTabEvents();
         createAccountTabEvents();
-        populateHomeTab();
-        createHomeTabEvents();
-        createBrowseTabEvents();
+
+        createHomeTab();
+        createBrowseTab();
     }
 
     return {
         displayView: function () {
             ViewUtils.displayViewFromId("login_view", "current_view");
             initializeView();
-            refreshHomeWall();
         }
     }
 }
