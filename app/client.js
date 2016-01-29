@@ -296,7 +296,6 @@ function SignedInView(session) {
             var response = session.getOtherUserDataByEmail(email);
 
             if(response.success){
-
                 var getBrowseProfile = function() { return session.getOtherUserDataByEmail(email); };
                 var getBrowseMessages = function() { return session.getOtherUserMessagesByEmail(email); };
                 var postBrowseMessage = function(message) { return session.postMessage(message, email); };
@@ -500,12 +499,6 @@ function Session(server, notifySessionChange) {
             return server.getUserMessagesByEmail(sessionToken, email);
         }
     }
-}
-
-function displayMessage(message) {
-    var messageElement = document.getElementById("message");
-    messageElement.innerHTML = message;
-    Utils.removeClass(messageElement.parentNode, "hidden");
 }
 
 // Main "refresh" of the website
