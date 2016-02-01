@@ -272,6 +272,9 @@ function SignedInView(session) {
             if(Utils.isPasswordLengthValid(newPassword)){
                 var response = session.changePassword(oldPassword, newPassword);
                 messages.newStatusMessage(response.message, response.success);
+
+                changePasswordForm.oldPassword.value = "";
+                changePasswordForm.newPassword.value = "";
             } else {
                 messages.newError("Password is empty or too short, try again!");
             }
