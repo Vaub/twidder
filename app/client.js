@@ -6,6 +6,8 @@ var session;
 var signedInView;
 var welcomeView;
 
+var minPasswordLength = 6;
+
 var ViewUtils = {
     isElementAView: function (element) {
         return (element instanceof HTMLElement) &&
@@ -68,7 +70,6 @@ var Utils = {
     },
 
     isPasswordLengthValid: function(password){
-        var minPasswordLength = 6;
         return (typeof(password) === "string" && password.length >= minPasswordLength);
     }
 };
