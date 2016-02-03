@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS users(
+  email TEXT PRIMARY KEY,
+  password TEXT NOT NULL,
+
+  first_name TEXT NOT NULL,
+  family_name TEXT NOT NULL,
+  gender TEXT NOT NULL,
+  city TEXT NOT NULL,
+  country TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS posts(
+  to_user TEXT,
+  from_user TEXT,
+  content TEXT,
+  date_posted TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+  FOREIGN KEY(to_user) REFERENCES users(username),
+  FOREIGN KEY(from_user) REFERENCES users(username)
+);

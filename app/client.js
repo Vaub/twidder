@@ -150,11 +150,11 @@ function Wall(getProfileFunction, getMessagesFunction, postMessageFunction) {
     function populateProfile(data) {
         var profile = wallNode.getElementsByClassName("profile")[0];
 
-        profile.getElementsByClassName("profile_email")[0].innerHTML = data.email;
-        profile.getElementsByClassName("profile_name")[0].innerHTML = data.firstname +" "+ data.familyname;
-        profile.getElementsByClassName("profile_gender")[0].innerHTML = (data.gender === "m") ? "Male" : "Female";
-        profile.getElementsByClassName("profile_city")[0].innerHTML = data.city;
-        profile.getElementsByClassName("profile_country")[0].innerHTML = data.country;
+        profile.getElementsByClassName("profile_email")[0].innerText = data.email;
+        profile.getElementsByClassName("profile_name")[0].innerText = data.firstname +" "+ data.familyname;
+        profile.getElementsByClassName("profile_gender")[0].innerText = (data.gender === "m") ? "Male" : "Female";
+        profile.getElementsByClassName("profile_city")[0].innerText = data.city;
+        profile.getElementsByClassName("profile_country")[0].innerText = data.country;
     }
 
     function fillWall(data) {
@@ -164,8 +164,8 @@ function Wall(getProfileFunction, getMessagesFunction, postMessageFunction) {
         var posts = data || [];
         Array.prototype.forEach.call(posts, function(post) {
             var newPostNode = postNode.cloneNode(true);
-            newPostNode.getElementsByClassName("post_text")[0].innerHTML = post.content;
-            newPostNode.getElementsByClassName("post_user")[0].innerHTML = "by "+ post.writer;
+            newPostNode.getElementsByClassName("post_text")[0].innerText = post.content;
+            newPostNode.getElementsByClassName("post_user")[0].innerText = "by "+ post.writer;
             newWall.appendChild(newPostNode);
         });
 
