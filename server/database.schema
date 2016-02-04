@@ -15,13 +15,13 @@ CREATE TABLE IF NOT EXISTS posts(
   content TEXT,
   date_posted TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-  FOREIGN KEY(to_user) REFERENCES users(username),
-  FOREIGN KEY(from_user) REFERENCES users(username)
+  FOREIGN KEY(to_user) REFERENCES users(email),
+  FOREIGN KEY(from_user) REFERENCES users(email)
 );
 
 CREATE TABLE IF NOT EXISTS sessions(
-  user TEXT,
-  token TEXT,
+  user TEXT NOT NULL,
+  token TEXT NOT NULL,
 
   FOREIGN KEY (user) REFERENCES users(email)
 );

@@ -1,3 +1,4 @@
+import uuid
 from flask import Flask, request, abort
 
 import database_helper as db
@@ -63,6 +64,43 @@ def does_user_exist(user):
         return True
     except db.UserDoesNotExist:
         return False
+
+
+@app.route("/signIn", methods=['POST'])
+def sign_in():
+    auth = request.authorization
+    if not _is_auth_valid(auth):
+        abort(401)
+
+    try:
+        user = db.select_user(auth.username)
+
+        if not _is_password_equivalent(user.password, auth.password):
+            abort(401)
+        return _create_user_session(user)
+    except db.UserDoesNotExist:
+        abort(401)
+
+
+def _is_auth_valid(auth):
+    try:
+        return auth.password and auth.username
+    except AttributeError:
+        return False
+
+
+def _is_password_equivalent(password, received):
+    return password == received
+
+
+def _create_user_session(user):
+    token = str(uuid.uuid4())
+    try:
+        db.persist_session(user.email, token)
+        return token
+    except db.CouldNotCreateSessionError:
+        abort(401)
+
 
 @app.errorhandler(400)
 def bad_request(e):
