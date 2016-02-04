@@ -30,6 +30,15 @@ class User(object):
         self.family_name = family_name
         self.gender = gender
         self.city = city
+        self.country = country
+
+
+def _create_user_from_row(row):
+    return User(**row)
+
+
+class UserDoesNotExist(Exception):
+    def __init__(self): pass
 
 
 def connect_db(filename):
@@ -42,34 +51,37 @@ def close_db():
 
 
 def select_user(email):
-    if not email:
-        return {}
+    conn = g.db
+    try:
+        user = conn.execute(SELECT_USER, (email,)).fetchone()
+        if not user:
+            raise UserDoesNotExist()
 
-    c = g.db
-    c.execute(SELECT_USER, email)
-    return c.fetchone()
+        return _create_user_from_row(user)
+    except sqlite3.Error:
+        raise UserDoesNotExist
 
 
 def persist_user(user):
-    if not is_user_valid(user):
+    if not _is_user_valid(user):
         return False
 
     conn = g.db
-    conn.execute(UPDATE_USER,
-                 (user.password, user.first_name, user.family_name, user.gender, user.city, user.country, user.email,))
-    conn.execute(INSERT_USER,
-                 (user.email, user.password, user.first_name, user.family_name, user.gender, user.city, user.country,))
-    conn.commit()
+    try:
+        conn.execute(UPDATE_USER, (user.password, user.first_name, user.family_name,
+                                   user.gender, user.city, user.country, user.email))
+        conn.execute(INSERT_USER, (user.email, user.password, user.first_name, user.family_name,
+                                   user.gender, user.city, user.country))
+        conn.commit()
+    except sqlite3.Error:
+        return False
+
     return True
 
 
-def is_user_valid(user):
-    if not user:
-        return False
-
-    try:
-        return (user.email and user.password and
-                user.first_name and user.family_name and
-                user.gender and user.city and user.country)
-    except AttributeError:
-        return False
+def _is_user_valid(user):
+    return type(user) is User and (
+        user.email and user.password and
+        user.first_name and user.family_name and
+        user.gender and user.city and user.country
+    )

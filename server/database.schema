@@ -18,3 +18,10 @@ CREATE TABLE IF NOT EXISTS posts(
   FOREIGN KEY(to_user) REFERENCES users(username),
   FOREIGN KEY(from_user) REFERENCES users(username)
 );
+
+CREATE TABLE IF NOT EXISTS sessions(
+  user TEXT,
+  token TEXT,
+
+  FOREIGN KEY (user) REFERENCES users(email)
+);
