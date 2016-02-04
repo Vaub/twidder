@@ -14,6 +14,21 @@ class UserNotValidError(Exception):
     def __init__(self): pass
 
 
+class CouldNotLoginError(Exception):
+    def __init__(self): pass
+
+def validate_password(password):
+    return len(password) >= MIN_PASSWORD_LENGTH
+
+
+def identify(token):
+    try:
+        email = db.select_session(token)
+        return db.select_user(email)
+    except (db.SessionDoesNotExistError, db.UserDoesNotExist):
+        abort(401)
+
+
 @app.before_request
 def before_request():
     db.connect_db(DATABASE)
@@ -55,7 +70,7 @@ def is_user_data_valid(data):
 
 
 def is_user_valid(user):
-    return len(user.password) >= MIN_PASSWORD_LENGTH
+    return validate_password(user.password)
 
 
 def does_user_exist(user):
@@ -100,6 +115,34 @@ def _create_user_session(user):
         return token
     except db.CouldNotCreateSessionError:
         abort(401)
+
+
+@app.route("/users/changePassword", methods=["PUT"])
+def change_password():
+    user = identify(request.headers["X-Session-Token"])
+
+    data = request.get_json()
+    if not _is_password_data_valid(data):
+        abort(400)
+
+    try:
+        if (not user.password == data["oldPassword"]) or not validate_password(data["newPassword"]):
+            abort(400)
+
+        user.password = data["newPassword"]
+        if not db.persist_user(user):
+            abort(500)
+
+        return "Password changed"
+    except db.UserDoesNotExist:
+        abort(401)
+
+
+def _is_password_data_valid(data):
+    try:
+        return data["oldPassword"] and data["newPassword"]
+    except KeyError:
+        return False
 
 
 @app.errorhandler(400)

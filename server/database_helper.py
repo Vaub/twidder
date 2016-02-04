@@ -21,6 +21,8 @@ INSERT_USER = (
     "  (?, ?, ?, ?, ?, ?, ?)"
 )
 
+SELECT_SESSION = "SELECT * FROM sessions WHERE token = ?"
+
 UPDATE_SESSION = "UPDATE sessions SET token = ? WHERE user = ?"
 
 INSERT_SESSION = "INSERT OR IGNORE INTO sessions(user, token) VALUES (?, ?)"
@@ -46,6 +48,10 @@ class UserDoesNotExist(Exception):
 
 
 class CouldNotCreateSessionError(Exception):
+    def __init__(self): pass
+
+
+class SessionDoesNotExistError(Exception):
     def __init__(self): pass
 
 
@@ -103,3 +109,15 @@ def persist_session(email, token):
         conn.commit()
     except sqlite3.Error as e:
         raise CouldNotCreateSessionError()
+
+
+def select_session(token):
+    conn = g.db
+    try:
+        session = conn.execute(SELECT_SESSION, (token,)).fetchone()
+        if not session:
+            raise SessionDoesNotExistError()
+
+        return session["user"]
+    except sqlite3.Error:
+        raise SessionDoesNotExistError()
