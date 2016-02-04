@@ -22,6 +22,16 @@ INSERT_USER = (
 )
 
 
+class User(object):
+    def __init__(self, email, password, first_name, family_name, gender, city, country):
+        self.email = email
+        self.password = password
+        self.first_name = first_name
+        self.family_name = family_name
+        self.gender = gender
+        self.city = city
+
+
 def connect_db(filename):
     g.db = sqlite3.connect(filename)
     g.db.row_factory = sqlite3.Row
@@ -41,7 +51,7 @@ def select_user(email):
 
 
 def persist_user(user):
-    if is_user_valid(user):
+    if not is_user_valid(user):
         return False
 
     conn = g.db
