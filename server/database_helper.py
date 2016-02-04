@@ -28,19 +28,8 @@ UPDATE_SESSION = "UPDATE sessions SET token = ? WHERE user = ?"
 INSERT_SESSION = "INSERT OR IGNORE INTO sessions(user, token) VALUES (?, ?)"
 
 
-class User(object):
-    def __init__(self, email, password, first_name, family_name, gender, city, country):
-        self.email = email
-        self.password = password
-        self.first_name = first_name
-        self.family_name = family_name
-        self.gender = gender
-        self.city = city
-        self.country = country
-
-
 def _create_user_from_row(row):
-    return User(**row)
+    return row
 
 
 class UserDoesNotExist(Exception):
@@ -94,11 +83,14 @@ def persist_user(user):
 
 
 def _is_user_valid(user):
-    return type(user) is User and (
-        user.email and user.password and
-        user.first_name and user.family_name and
-        user.gender and user.city and user.country
-    )
+    try:
+        return (
+            user.email and user.password and
+            user.first_name and user.family_name and
+            user.gender and user.city and user.country
+        )
+    except AttributeError:
+        return False
 
 
 def persist_session(email, token):
