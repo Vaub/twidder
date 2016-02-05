@@ -21,6 +21,8 @@ INSERT_USER = (
     "  (?, ?, ?, ?, ?, ?, ?)"
 )
 
+SELECT_SESSION = "SELECT * FROM sessions WHERE token = ?"
+
 UPDATE_SESSION = "UPDATE sessions SET token = ? WHERE user = ?"
 
 INSERT_SESSION = "INSERT OR IGNORE INTO sessions(user, token) VALUES (?, ?)"
@@ -30,19 +32,8 @@ SELECT_SESSION = "SELECT * FROM sessions WHERE token = ?"
 DELETE_SESSION = "DELETE FROM sessions WHERE token = ?"
 
 
-class User(object):
-    def __init__(self, email, password, first_name, family_name, gender, city, country):
-        self.email = email
-        self.password = password
-        self.first_name = first_name
-        self.family_name = family_name
-        self.gender = gender
-        self.city = city
-        self.country = country
-
-
 def _create_user_from_row(row):
-    return User(**row)
+    return row
 
 
 class UserDoesNotExist(Exception):
@@ -53,11 +44,11 @@ class CouldNotCreateSessionError(Exception):
     def __init__(self): pass
 
 
-class SessionDoesNotExist(Exception):
+class CouldNotDeleteSession(Exception):
     def __init__(self): pass
 
 
-class CouldNotDeleteSession(Exception):
+class SessionDoesNotExistError(Exception):
     def __init__(self): pass
 
 
@@ -100,11 +91,14 @@ def persist_user(user):
 
 
 def _is_user_valid(user):
-    return type(user) is User and (
-        user.email and user.password and
-        user.first_name and user.family_name and
-        user.gender and user.city and user.country
-    )
+    try:
+        return (
+            user.email and user.password and
+            user.first_name and user.family_name and
+            user.gender and user.city and user.country
+        )
+    except AttributeError:
+        return False
 
 
 def persist_session(email, token):
@@ -122,11 +116,11 @@ def select_session(token):
     try:
         session = conn.execute(SELECT_SESSION, (token,)).fetchone()
         if not session:
-            raise SessionDoesNotExist()
+            raise SessionDoesNotExistError()
 
-        return session
+        return session["user"]
     except sqlite3.Error:
-        raise SessionDoesNotExist()
+        raise SessionDoesNotExistError()
 
 
 def delete_session(token):

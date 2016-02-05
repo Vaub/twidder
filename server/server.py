@@ -1,8 +1,7 @@
 import uuid
-from flask import Flask, request, abort
+from flask import Flask, json, request, abort
 
 import database_helper as db
-from database_helper import User
 
 MIN_PASSWORD_LENGTH = 6
 DATABASE = "database.db"
@@ -10,12 +9,86 @@ DATABASE = "database.db"
 app = Flask(__name__)
 
 
+class User(object):
+    def __init__(self, email, password, first_name, family_name, gender, city, country):
+        self.email = email
+        self.password = password
+        self.first_name = first_name
+        self.family_name = family_name
+        self.gender = gender
+        self.city = city
+        self.country = country
+        self._validate()
+
+    def _validate(self):
+        if not (self.email and self.password and self.first_name and self.family_name and
+                self.gender and self.city and self.country):
+            raise UserNotValidError()
+
+        if not is_gender_valid(self.gender):
+            raise UserNotValidError("User gender is not valid.")
+
+        if not is_password_valid(self.password):
+            raise UserNotValidError("Password is not valid, use {min_char} characters minimum"
+                                    .format(min_chars=MIN_PASSWORD_LENGTH))
+
+    def has_password(self, password):
+        return self.password == password
+
+    @staticmethod
+    def find_user(email):
+        return User(**db.select_user(email))
+
+
+def is_user_present(user):
+    try:
+        return bool(User.find_user(user.email))
+    except db.UserDoesNotExist:
+        return False
+
+
+class ApiError(Exception):
+    def __init__(self, message, status_code=None):
+        super(ApiError, self).__init__(message)
+        self.status_code = status_code or 500
+
+
 class UserNotValidError(Exception):
-    def __init__(self): pass
+    def __init__(self, message=None):
+        super(UserNotValidError, self).__init__(message or "User not valid.")
 
 
-class SessionNotFoundError(Exception):
-    def __init__(self): pass
+class CouldNotLoginError(Exception):
+    def __init__(self, message=None):
+        super(CouldNotLoginError, self).__init__(message or "Could not login, be sure that your credentials are valid.")
+
+
+class SessionNotValidError(Exception):
+    pass
+
+
+def is_password_valid(password):
+    return password and len(password) >= MIN_PASSWORD_LENGTH
+
+
+def is_gender_valid(gender):
+    return gender and gender in ["m", "f"]
+
+
+def identify(token):
+    try:
+        email = db.select_session(token)
+        return User.find_user(email)
+    except (db.SessionDoesNotExistError, db.UserDoesNotExist):
+        raise SessionNotValidError()
+
+
+def make_json(status_code, message):
+    content = {"status_code": status_code, "message": message}
+    response = json.jsonify(content)
+    response.status_code = status_code
+
+    return response
 
 
 @app.before_request
@@ -33,68 +106,39 @@ def hello():
     return "Hello World!"
 
 
-@app.route("/signUp", methods=["POST"])
-def sign_up():
+@app.route("/register", methods=["POST"])
+def register():
     data = request.get_json()
-    if not is_user_data_valid(data):
-        abort(400)
+    user = User(**data)
 
-    user = User(data["email"], data["password"],
-                data["first_name"], data["family_name"], data["gender"],
-                data["city"], data["country"])
-
-    if not is_user_valid(user) or does_user_exist(user):
+    if is_user_present(user):
         raise UserNotValidError()
 
-    return "User was added: {}".format(db.persist_user(user))
+    return make_json(200, "User was added")
 
 
-def is_user_data_valid(data):
-    try:
-        return (data["email"] and data["password"] and
-                data["first_name"] and data["family_name"] and data["gender"] and
-                data["city"] and data["country"])
-    except KeyError:
-        return False
-
-
-def is_user_valid(user):
-    return len(user.password) >= MIN_PASSWORD_LENGTH
-
-
-def does_user_exist(user):
-    try:
-        db.select_user(user.email)
-        return True
-    except db.UserDoesNotExist:
-        return False
-
-
-@app.route("/signIn", methods=['POST'])
-def sign_in():
+@app.route("/login", methods=['POST'])
+def login():
     auth = request.authorization
-    if not _is_auth_valid(auth):
-        abort(401)
+    if not _is_auth_data_valid(auth):
+        raise CouldNotLoginError(
+            "Could not get credentials. Be sure to use Basic Authentication")
 
     try:
-        user = db.select_user(auth.username)
+        user = User.find_user(auth.username)
+        if not user.has_password(auth.password):
+            raise CouldNotLoginError()
 
-        if not _is_password_equivalent(user.password, auth.password):
-            abort(401)
         return _create_user_session(user)
     except db.UserDoesNotExist:
-        abort(401)
+        raise CouldNotLoginError()
 
 
-def _is_auth_valid(auth):
+def _is_auth_data_valid(auth):
     try:
         return auth.password and auth.username
     except AttributeError:
         return False
-
-
-def _is_password_equivalent(password, received):
-    return password == received
 
 
 def _create_user_session(user):
@@ -103,40 +147,77 @@ def _create_user_session(user):
         db.persist_session(user.email, token)
         return token
     except db.CouldNotCreateSessionError:
+        raise ApiError("Could not create session.")
+
+
+@app.route("/users/changePassword", methods=["PUT"])
+def change_password():
+    user = identify(request.headers["X-Session-Token"])
+
+    data = request.get_json()
+    if not _is_password_data_valid(data):
+        abort(400)
+
+    try:
+        if (not user.password == data["oldPassword"]) or not is_password_valid(data["newPassword"]):
+            abort(400)
+
+        user.password = data["newPassword"]
+        if not db.persist_user(user):
+            abort(500)
+
+        return "Password changed"
+    except db.UserDoesNotExist:
         abort(401)
 
 
-@app.route("/signOut", methods=["POST"])
-def sign_out():
-    token = request.headers["Session-Token"]
-    if not _does_session_exist(token):
-        raise SessionNotFoundError()
+def _is_password_data_valid(data):
+    try:
+        return data["oldPassword"] and data["newPassword"]
+    except KeyError:
+        return False
 
+
+@app.route("/logout", methods=["POST"])
+def logout():
+    token = request.headers["Session-Token"]
+    identify(token)
     db.delete_session(token)
-    return "Signed out"
+
+    return make_json(200, "Logout successful.")
 
 
 def _does_session_exist(token):
     try:
         db.select_session(token)
         return True
-    except db.SessionDoesNotExist:
+    except db.SessionDoesNotExistError:
         return False
 
 
-@app.errorhandler(SessionNotFoundError)
-def session_not_found(e):
-    return "Session not found", 400
-
 @app.errorhandler(400)
-def bad_request(e):
-    return "Your request was not valid", 400
+def bad_request(error):
+    return make_json(400, error.message)
 
 
 @app.errorhandler(UserNotValidError)
-def user_not_valid(e):
-    return "User is not valid", 400
+def user_not_valid(error):
+    return make_json(400, error.message)
 
+
+@app.errorhandler(SessionNotValidError)
+def session_not_valid(error=None):
+    return make_json(401, "Session is not valid.")
+
+
+@app.errorhandler(CouldNotLoginError)
+def could_not_login(error):
+    return make_json(401, error.message)
+
+
+@app.errorhandler(ApiError)
+def generic_error(error):
+    return make_json(error.status_code, error.message)
 
 if __name__ == "__main__":
     app.run(debug=True)
