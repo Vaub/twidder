@@ -27,6 +27,10 @@ UPDATE_SESSION = "UPDATE sessions SET token = ? WHERE user = ?"
 
 INSERT_SESSION = "INSERT OR IGNORE INTO sessions(user, token) VALUES (?, ?)"
 
+SELECT_SESSION = "SELECT * FROM sessions WHERE token = ?"
+
+DELETE_SESSION = "DELETE FROM sessions WHERE token = ?"
+
 
 def _create_user_from_row(row):
     return row
@@ -37,6 +41,10 @@ class UserDoesNotExist(Exception):
 
 
 class CouldNotCreateSessionError(Exception):
+    def __init__(self): pass
+
+
+class CouldNotDeleteSession(Exception):
     def __init__(self): pass
 
 
@@ -113,3 +121,12 @@ def select_session(token):
         return session["user"]
     except sqlite3.Error:
         raise SessionDoesNotExistError()
+
+
+def delete_session(token):
+    conn = g.db
+    try:
+        conn.execute(DELETE_SESSION, (token,))
+        conn.commit()
+    except sqlite3.Error:
+        raise CouldNotDeleteSession()

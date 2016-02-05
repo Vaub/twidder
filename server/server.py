@@ -178,6 +178,23 @@ def _is_password_data_valid(data):
         return False
 
 
+@app.route("/logout", methods=["POST"])
+def logout():
+    token = request.headers["Session-Token"]
+    identify(token)
+    db.delete_session(token)
+
+    return make_json(200, "Logout successful.")
+
+
+def _does_session_exist(token):
+    try:
+        db.select_session(token)
+        return True
+    except db.SessionDoesNotExistError:
+        return False
+
+
 @app.errorhandler(400)
 def bad_request(error):
     return make_json(400, error.message)
