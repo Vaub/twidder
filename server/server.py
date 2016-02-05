@@ -14,6 +14,10 @@ class UserNotValidError(Exception):
     def __init__(self): pass
 
 
+class SessionNotFoundError(Exception):
+    def __init__(self): pass
+
+
 @app.before_request
 def before_request():
     db.connect_db(DATABASE)
@@ -101,6 +105,28 @@ def _create_user_session(user):
     except db.CouldNotCreateSessionError:
         abort(401)
 
+
+@app.route("/signOut", methods=["POST"])
+def sign_out():
+    token = request.headers["Session-Token"]
+    if not _does_session_exist(token):
+        raise SessionNotFoundError()
+
+    db.delete_session(token)
+    return "Signed out"
+
+
+def _does_session_exist(token):
+    try:
+        db.select_session(token)
+        return True
+    except db.SessionDoesNotExist:
+        return False
+
+
+@app.errorhandler(SessionNotFoundError)
+def session_not_found(e):
+    return "Session not found", 400
 
 @app.errorhandler(400)
 def bad_request(e):

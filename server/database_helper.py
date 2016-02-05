@@ -25,6 +25,10 @@ UPDATE_SESSION = "UPDATE sessions SET token = ? WHERE user = ?"
 
 INSERT_SESSION = "INSERT OR IGNORE INTO sessions(user, token) VALUES (?, ?)"
 
+SELECT_SESSION = "SELECT * FROM sessions WHERE token = ?"
+
+DELETE_SESSION = "DELETE FROM sessions WHERE token = ?"
+
 
 class User(object):
     def __init__(self, email, password, first_name, family_name, gender, city, country):
@@ -46,6 +50,14 @@ class UserDoesNotExist(Exception):
 
 
 class CouldNotCreateSessionError(Exception):
+    def __init__(self): pass
+
+
+class SessionDoesNotExist(Exception):
+    def __init__(self): pass
+
+
+class CouldNotDeleteSession(Exception):
     def __init__(self): pass
 
 
@@ -103,3 +115,24 @@ def persist_session(email, token):
         conn.commit()
     except sqlite3.Error as e:
         raise CouldNotCreateSessionError()
+
+
+def select_session(token):
+    conn = g.db
+    try:
+        session = conn.execute(SELECT_SESSION, (token,)).fetchone()
+        if not session:
+            raise SessionDoesNotExist()
+
+        return session
+    except sqlite3.Error:
+        raise SessionDoesNotExist()
+
+
+def delete_session(token):
+    conn = g.db
+    try:
+        conn.execute(DELETE_SESSION, (token,))
+        conn.commit()
+    except sqlite3.Error:
+        raise CouldNotDeleteSession()
