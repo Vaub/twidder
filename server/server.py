@@ -22,7 +22,7 @@ class User(object):
 
     def _validate(self):
         if not (self.email and self.password and self.first_name and self.family_name and
-                self.gender and self.city and self.country):
+                    self.gender and self.city and self.country):
             raise UserNotValidError()
 
         if not is_gender_valid(self.gender):
@@ -34,6 +34,9 @@ class User(object):
 
     def has_password(self, password):
         return self.password == password
+
+    def get_messages(self):
+        return db.select_messages(self.email)
 
     @staticmethod
     def find_user(email):
@@ -122,7 +125,7 @@ def login():
     auth = request.authorization
     if not _is_auth_data_valid(auth):
         raise CouldNotLoginError(
-            "Could not get credentials. Be sure to use Basic Authentication")
+                "Could not get credentials. Be sure to use Basic Authentication")
 
     try:
         user = User.find_user(auth.username)
@@ -199,7 +202,7 @@ def _does_session_exist(token):
 def get_user_data_by_token():
     token = request.headers["X-Session-Token"]
     user = identify(token)
-    return json.jsonify(_create_user_info(user))
+    return _create_user_info(user)
 
 
 @app.route("/users/data/<email>", methods=["GET"])
@@ -210,13 +213,19 @@ def get_user_data_by_email(email):
         raise UserNotValidError("User does not exist")
 
     other_user = User.find_user(email)
-    return json.jsonify(_create_user_info(other_user))
+    return _create_user_info(other_user)
 
 
 def _create_user_info(user):
-     return {"email":user.email, "first_name":user.first_name, "family_name":user.family_name,
-             "gender":user.gender, "city":user.city, "country":user.country}
+    return json.jsonify({"email": user.email, "first_name": user.first_name, "family_name": user.family_name,
+                         "gender": user.gender, "city": user.city, "country": user.country})
 
+
+@app.route("/users/messages", methods=["GET"])
+def get_user_messages_by_token():
+    token = request.headers["X-Session-Token"]
+    user = identify(token)
+    return user.get_messages()
 
 @app.errorhandler(400)
 def bad_request(error):
@@ -241,6 +250,7 @@ def could_not_login(error):
 @app.errorhandler(ApiError)
 def generic_error(error):
     return make_json(error.status_code, error.message)
+
 
 if __name__ == "__main__":
     app.run(debug=True)

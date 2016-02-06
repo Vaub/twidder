@@ -31,6 +31,8 @@ SELECT_SESSION = "SELECT * FROM sessions WHERE token = ?"
 
 DELETE_SESSION = "DELETE FROM sessions WHERE token = ?"
 
+SELECT_MESSAGES = "SELECT * FROM posts WHERE to_user = ?"
+
 
 def _create_user_from_row(row):
     return row
@@ -49,6 +51,10 @@ class CouldNotDeleteSession(Exception):
 
 
 class SessionDoesNotExistError(Exception):
+    def __init__(self): pass
+
+
+class CouldNotFindMessages(Exception):
     def __init__(self): pass
 
 
@@ -130,3 +136,12 @@ def delete_session(token):
         conn.commit()
     except sqlite3.Error:
         raise CouldNotDeleteSession()
+
+
+def select_messages(email):
+    conn = g.db
+    try:
+        messages = conn.execute(SELECT_MESSAGES, (email,)).fetchall()
+        return messages
+    except sqlite3.Error:
+        raise CouldNotFindMessages()
