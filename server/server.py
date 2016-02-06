@@ -3,6 +3,8 @@ from flask import Flask, json, request, abort
 
 import database_helper as db
 
+COULD_NOT_POST_MESSAGE = "Could not post message."
+
 MIN_PASSWORD_LENGTH = 6
 DATABASE = "database.db"
 
@@ -38,6 +40,20 @@ class User(object):
     def get_messages(self):
         return db.select_messages(self.email)
 
+    def post_message(self, to_user_email, message):
+        if not (to_user_email and message):
+            raise CouldNotPostMessageError(COULD_NOT_POST_MESSAGE)
+
+        try:
+            User.find_user(to_user_email)
+        except (db.UserDoesNotExist, UserNotValidError):
+            raise CouldNotPostMessageError(COULD_NOT_POST_MESSAGE)
+
+        try:
+            db.insert_message(to_user_email, self.email, message)
+        except db.CouldNotInsertMessage:
+            raise CouldNotPostMessageError(COULD_NOT_POST_MESSAGE)
+
     @staticmethod
     def find_user(email):
         return User(**db.select_user(email))
@@ -64,6 +80,10 @@ class UserNotValidError(Exception):
 class CouldNotLoginError(Exception):
     def __init__(self, message=None):
         super(CouldNotLoginError, self).__init__(message or "Could not login, be sure that your credentials are valid.")
+
+
+class CouldNotPostMessageError(Exception):
+    pass
 
 
 class SessionNotValidError(Exception):
@@ -217,8 +237,8 @@ def get_user_data_by_email(email):
 
 
 def _create_user_info(user):
-    return json.jsonify({"email": user.email, "first_name": user.first_name, "family_name": user.family_name,
-                         "gender": user.gender, "city": user.city, "country": user.country})
+     return {"email":user.email, "first_name":user.first_name, "family_name":user.family_name,
+             "gender":user.gender, "city":user.city, "country":user.country}
 
 
 @app.route("/users/messages", methods=["GET"])
@@ -227,13 +247,36 @@ def get_user_messages_by_token():
     user = identify(token)
     return user.get_messages()
 
+@app.route("/messages/<to_user_email>", methods=["POST"])
+def post_message(to_user_email):
+    user = identify(request.headers["X-Session-Token"])
+    data = request.get_json(force=True)
+    if not _is_post_message_data_valid(data):
+        abort(400)
+
+    user.post_message(to_user_email, data["message"])
+    return make_json(200, "Message successfully posted.")
+
+
+def _is_post_message_data_valid(data):
+    try:
+        return bool(data["message"])
+    except KeyError:
+        return False
+
+
 @app.errorhandler(400)
 def bad_request(error):
-    return make_json(400, error.message)
+    return make_json(400, error.message or "Your request is probably missing data.")
 
 
 @app.errorhandler(UserNotValidError)
 def user_not_valid(error):
+    return make_json(400, error.message)
+
+
+@app.errorhandler(CouldNotPostMessageError)
+def could_not_post_message(error):
     return make_json(400, error.message)
 
 
