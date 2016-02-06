@@ -125,6 +125,14 @@ def make_json(status_code, message):
     return response
 
 
+def create_response(status_code, message, data):
+    content = {"status_code": status_code, "message": message, "data": data}
+    response = json.jsonify(content)
+    response.status_code = status_code
+
+    return response
+
+
 @app.before_request
 def before_request():
     db.connect_db(DATABASE)
@@ -148,7 +156,7 @@ def register():
     if is_user_present(user.email):
         raise UserNotValidError()
 
-    return make_json(200, "User was added")
+    return create_response(200, "User was added.", [])
 
 
 @app.route("/login", methods=['POST'])
@@ -163,7 +171,8 @@ def login():
         if not user.has_password(auth.password):
             raise CouldNotLoginError()
 
-        return _create_user_session(user)
+        token = _create_user_session(user)
+        return create_response(200, "Login successful.", token)
     except db.UserDoesNotExist:
         raise CouldNotLoginError()
 
@@ -194,13 +203,13 @@ def change_password():
 
     try:
         if (not user.password == data["oldPassword"]) or not is_password_valid(data["newPassword"]):
-            abort(400)
+            raise ApiError("Password is invalid.", 400)
 
         user.password = data["newPassword"]
         if not db.persist_user(user):
             abort(500)
 
-        return "Password changed"
+        return create_response(200, "Password changed.", [])
     except db.UserDoesNotExist:
         abort(401)
 
@@ -218,7 +227,7 @@ def logout():
     identify(token)
     db.delete_session(token)
 
-    return make_json(200, "Logout successful.")
+    return create_response(200, "Logout successful.", [])
 
 
 def _does_session_exist(token):
@@ -233,7 +242,7 @@ def _does_session_exist(token):
 def get_user_data_by_token():
     token = request.headers["X-Session-Token"]
     user = identify(token)
-    return _create_user_info(user)
+    return create_response(200, "Data successfully retrieved.", _create_user_info(user))
 
 
 @app.route("/users/data/<email>", methods=["GET"])
@@ -244,12 +253,12 @@ def get_user_data_by_email(email):
         raise UserNotValidError(USER_DOES_NOT_EXIST)
 
     other_user = User.find_user(email)
-    return _create_user_info(other_user)
+    return create_response(200, "Data successfully retrieved.",_create_user_info(other_user))
 
 
 def _create_user_info(user):
-    return json.jsonify({"email": user.email, "first_name": user.first_name, "family_name": user.family_name,
-                         "gender": user.gender, "city": user.city, "country": user.country})
+    return {"email": user.email, "first_name": user.first_name, "family_name": user.family_name,
+            "gender": user.gender, "city": user.city, "country": user.country}
 
 
 @app.route("/messages", methods=["GET"])
@@ -257,7 +266,7 @@ def get_user_messages_by_token():
     token = request.headers["X-Session-Token"]
     user = identify(token)
     messages = [m.__dict__ for m in user.get_messages()]
-    return json.jsonify({"data": messages})
+    return create_response(200, "Messages successfully retrieved.",messages)
 
 
 @app.route("/messages/<email>", methods=["GET"])
@@ -269,7 +278,7 @@ def get_user_messages_by_email(email):
 
     other_user = User.find_user(email)
     messages = [m.__dict__ for m in other_user.get_messages()]
-    return json.jsonify({"data": messages})
+    return create_response(200, "Messages successfully retrieved.",messages)
 
 
 @app.route("/messages/<to_user_email>", methods=["POST"])
@@ -280,7 +289,7 @@ def post_message(to_user_email):
         abort(400)
 
     user.post_message(to_user_email, data["message"])
-    return make_json(200, "Message successfully posted.")
+    return create_response(200, "Message successfully posted.", [])
 
 
 def _is_post_message_data_valid(data):
