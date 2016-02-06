@@ -35,6 +35,17 @@ class User(object):
     def has_password(self, password):
         return self.password == password
 
+    def post_message(self, to_user_email, message):
+        if not (to_user_email and message):
+            raise CouldNotPostMessageError("Could not post message.")
+
+        try:
+            User.find_user(to_user_email)
+        except (db.UserDoesNotExist, UserNotValidError):
+            raise CouldNotPostMessageError("Could not post message.")
+
+        db.insert_message(to_user_email, self.email, message)
+
     @staticmethod
     def find_user(email):
         return User(**db.select_user(email))
@@ -61,6 +72,10 @@ class UserNotValidError(Exception):
 class CouldNotLoginError(Exception):
     def __init__(self, message=None):
         super(CouldNotLoginError, self).__init__(message or "Could not login, be sure that your credentials are valid.")
+
+
+class CouldNotPostMessageError(Exception):
+    pass
 
 
 class SessionNotValidError(Exception):
@@ -195,6 +210,21 @@ def _does_session_exist(token):
         return False
 
 
+@app.route("/messages/<to_user_email>", methods=["POST"])
+def post_message(to_user_email):
+    user = identify(request.headers["X-Session-Token"])
+    data = request.get_json(force=True)
+    if not _is_post_message_data_valid(data):
+        abort(400)
+
+    user.post_message(to_user_email, data["message"])
+    return make_json("200", "Message successfully posted.")
+
+
+def _is_post_message_data_valid(data):
+    return bool(data["message"])
+
+
 @app.errorhandler(400)
 def bad_request(error):
     return make_json(400, error.message)
@@ -202,6 +232,11 @@ def bad_request(error):
 
 @app.errorhandler(UserNotValidError)
 def user_not_valid(error):
+    return make_json(400, error.message)
+
+
+@app.errorhandler(CouldNotPostMessageError)
+def could_not_post_message(error):
     return make_json(400, error.message)
 
 
