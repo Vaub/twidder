@@ -3,12 +3,22 @@ from flask import Flask, json, request, abort
 
 import database_helper as db
 
+USER_DOES_NOT_EXIST = "User does not exist"
+
 COULD_NOT_POST_MESSAGE = "Could not post message."
 
 MIN_PASSWORD_LENGTH = 6
 DATABASE = "database.db"
 
 app = Flask(__name__)
+
+
+class Post(object):
+    def __init__(self, to_user, from_user, content, date_posted):
+        self.date_posted = date_posted
+        self.content = content
+        self.from_user = from_user
+        self.to_user = to_user
 
 
 class User(object):
@@ -38,7 +48,8 @@ class User(object):
         return self.password == password
 
     def get_messages(self):
-        return db.select_messages(self.email)
+        messages = db.select_messages(self.email)
+        return [Post(**m) for m in messages]
 
     def post_message(self, to_user_email, message):
         if not (to_user_email and message):
@@ -230,22 +241,36 @@ def get_user_data_by_email(email):
     token = request.headers["X-Session-Token"]
     identify(token)
     if not is_user_present(email):
-        raise UserNotValidError("User does not exist")
+        raise UserNotValidError(USER_DOES_NOT_EXIST)
 
     other_user = User.find_user(email)
     return _create_user_info(other_user)
 
 
 def _create_user_info(user):
-     return {"email":user.email, "first_name":user.first_name, "family_name":user.family_name,
-             "gender":user.gender, "city":user.city, "country":user.country}
+    return json.jsonify({"email": user.email, "first_name": user.first_name, "family_name": user.family_name,
+                         "gender": user.gender, "city": user.city, "country": user.country})
 
 
-@app.route("/users/messages", methods=["GET"])
+@app.route("/messages", methods=["GET"])
 def get_user_messages_by_token():
     token = request.headers["X-Session-Token"]
     user = identify(token)
-    return user.get_messages()
+    messages = [m.__dict__ for m in user.get_messages()]
+    return json.jsonify({"data": messages})
+
+
+@app.route("/messages/<email>", methods=["GET"])
+def get_user_messages_by_email(email):
+    token = request.headers["X-Session-Token"]
+    identify(token)
+    if not is_user_present(email):
+        raise UserNotValidError(USER_DOES_NOT_EXIST)
+
+    other_user = User.find_user(email)
+    messages = [m.__dict__ for m in other_user.get_messages()]
+    return json.jsonify({"data": messages})
+
 
 @app.route("/messages/<to_user_email>", methods=["POST"])
 def post_message(to_user_email):
