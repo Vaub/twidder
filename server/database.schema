@@ -20,8 +20,9 @@ CREATE TABLE IF NOT EXISTS posts(
 );
 
 CREATE TABLE IF NOT EXISTS sessions(
-  user TEXT NOT NULL,
+  user TEXT UNIQUE NOT NULL,
   token TEXT NOT NULL,
 
+  PRIMARY KEY (user, token),
   FOREIGN KEY (user) REFERENCES users(email)
 );

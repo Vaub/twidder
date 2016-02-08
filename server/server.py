@@ -1,9 +1,10 @@
 import uuid
-from flask import Flask, json, request, abort
+import werkzeug.security as security
+from flask import Flask, json, request, escape, abort
 
 import database_helper as db
 
-USER_DOES_NOT_EXIST = "User does not exist"
+SESSION_TOKEN = "X-Session-Token"
 
 COULD_NOT_POST_MESSAGE = "Could not post message."
 
@@ -11,6 +12,36 @@ MIN_PASSWORD_LENGTH = 6
 DATABASE = "database.db"
 
 app = Flask(__name__)
+
+
+class Session(object):
+    def __init__(self, user, token=None):
+        self.user = user
+        self.token = token or str(uuid.uuid4())
+        self._validate()
+
+    def _validate(self):
+        if not (self.user and self.token):
+            raise SessionNotValidError()
+        if not isinstance(self.user, User):
+            raise SessionNotValidError()
+
+    def persist(self):
+        try:
+            db.persist_session(self.user.email, self.token)
+        except db.CouldNotCreateSessionError:
+            raise ApiError("Could not create session.")
+
+    def close(self):
+        db.delete_session(self.token)
+
+    @staticmethod
+    def find_session(token):
+        try:
+            user_email = db.select_session(token)
+            return Session(User.find_user(user_email), token)
+        except (db.SessionDoesNotExistError, db.UserDoesNotExist, UserNotValidError):
+            raise SessionNotValidError()
 
 
 class Post(object):
@@ -34,7 +65,7 @@ class User(object):
 
     def _validate(self):
         if not (self.email and self.password and self.first_name and self.family_name and
-                    self.gender and self.city and self.country):
+                self.gender and self.city and self.country):
             raise UserNotValidError()
 
         if not is_gender_valid(self.gender):
@@ -44,8 +75,8 @@ class User(object):
             raise UserNotValidError("Password is not valid, use {min_char} characters minimum"
                                     .format(min_chars=MIN_PASSWORD_LENGTH))
 
-    def has_password(self, password):
-        return self.password == password
+    def check_password(self, password):
+        return security.check_password_hash(self.password, password)
 
     def get_messages(self):
         messages = db.select_messages(self.email)
@@ -57,7 +88,7 @@ class User(object):
 
         try:
             User.find_user(to_user_email)
-        except (db.UserDoesNotExist, UserNotValidError):
+        except UserNotValidError:
             raise CouldNotPostMessageError(COULD_NOT_POST_MESSAGE)
 
         try:
@@ -65,15 +96,27 @@ class User(object):
         except db.CouldNotInsertMessage:
             raise CouldNotPostMessageError(COULD_NOT_POST_MESSAGE)
 
+    def persist(self):
+        if not db.persist_user(self):
+            raise Exception("User could not be persisted???")
+
     @staticmethod
     def find_user(email):
-        return User(**db.select_user(email))
+        try:
+            user_data = db.select_user(email)
+            return User(**user_data)
+        except db.UserDoesNotExist:
+            raise UserNotValidError()
+
+    @staticmethod
+    def create_password(password):
+        return security.generate_password_hash(password)
 
 
 def is_user_present(email):
     try:
         return bool(User.find_user(email))
-    except db.UserDoesNotExist:
+    except UserNotValidError:
         return False
 
 
@@ -109,12 +152,9 @@ def is_gender_valid(gender):
     return gender and gender in ["m", "f"]
 
 
-def identify(token):
-    try:
-        email = db.select_session(token)
-        return User.find_user(email)
-    except (db.SessionDoesNotExistError, db.UserDoesNotExist):
-        raise SessionNotValidError()
+def identify_session():
+    token = request.headers[SESSION_TOKEN]
+    return Session.find_session(token)
 
 
 def make_json(status_code, message):
@@ -150,13 +190,24 @@ def hello():
 
 @app.route("/register", methods=["POST"])
 def register():
-    data = request.get_json()
-    user = User(**data)
+    data = request.get_json(force=True)
+    user = _create_user_to_register(data)
 
     if is_user_present(user.email):
         raise UserNotValidError()
 
+    user.persist()
     return create_response(200, "User was added.", [])
+
+
+def _create_user_to_register(data):
+    try:
+        parsed_data = {k: escape(data[k]) for k in data}
+        parsed_data["password"] = User.create_password(data["password"])
+
+        return User(**parsed_data)
+    except KeyError:
+        raise UserNotValidError()
 
 
 @app.route("/login", methods=['POST'])
@@ -168,12 +219,13 @@ def login():
 
     try:
         user = User.find_user(auth.username)
-        if not user.has_password(auth.password):
+        if not user.check_password(auth.password):
             raise CouldNotLoginError()
 
-        token = _create_user_session(user)
-        return create_response(200, "Login successful.", token)
-    except db.UserDoesNotExist:
+        session = Session(user)
+        session.persist()
+        return create_response(200, "Login successful.", session.token)
+    except UserNotValidError:
         raise CouldNotLoginError()
 
 
@@ -184,34 +236,19 @@ def _is_auth_data_valid(auth):
         return False
 
 
-def _create_user_session(user):
-    token = str(uuid.uuid4())
-    try:
-        db.persist_session(user.email, token)
-        return token
-    except db.CouldNotCreateSessionError:
-        raise ApiError("Could not create session.")
-
-
 @app.route("/users/changePassword", methods=["PUT"])
 def change_password():
-    user = identify(request.headers["X-Session-Token"])
-
+    user = identify_session().user
     data = request.get_json()
     if not _is_password_data_valid(data):
         abort(400)
 
-    try:
-        if (not user.password == data["oldPassword"]) or not is_password_valid(data["newPassword"]):
-            raise ApiError("Password is invalid.", 400)
+    if (not user.check_password(data["oldPassword"])) or (not is_password_valid(data["newPassword"])):
+        raise ApiError("Password is invalid.", 400)
+    user.password = User.create_password(data["newPassword"])
+    user.persist()
 
-        user.password = data["newPassword"]
-        if not db.persist_user(user):
-            abort(500)
-
-        return create_response(200, "Password changed.", [])
-    except db.UserDoesNotExist:
-        abort(401)
+    return create_response(200, "Password changed.", [])
 
 
 def _is_password_data_valid(data):
@@ -223,37 +260,24 @@ def _is_password_data_valid(data):
 
 @app.route("/logout", methods=["POST"])
 def logout():
-    token = request.headers["X-Session-Token"]
-    identify(token)
-    db.delete_session(token)
-
+    identify_session().close()
     return create_response(200, "Logout successful.", [])
-
-
-def _does_session_exist(token):
-    try:
-        db.select_session(token)
-        return True
-    except db.SessionDoesNotExistError:
-        return False
 
 
 @app.route("/users/data", methods=["GET"])
 def get_user_data_by_token():
-    token = request.headers["X-Session-Token"]
-    user = identify(token)
+    user = identify_session().user
     return create_response(200, "Data successfully retrieved.", _create_user_info(user))
 
 
 @app.route("/users/data/<email>", methods=["GET"])
 def get_user_data_by_email(email):
-    token = request.headers["X-Session-Token"]
-    identify(token)
+    identify_session()
     if not is_user_present(email):
-        raise UserNotValidError(USER_DOES_NOT_EXIST)
+        raise UserNotValidError()
 
     other_user = User.find_user(email)
-    return create_response(200, "Data successfully retrieved.",_create_user_info(other_user))
+    return create_response(200, "Data successfully retrieved.", _create_user_info(other_user))
 
 
 def _create_user_info(user):
@@ -263,32 +287,30 @@ def _create_user_info(user):
 
 @app.route("/messages", methods=["GET"])
 def get_user_messages_by_token():
-    token = request.headers["X-Session-Token"]
-    user = identify(token)
+    user = identify_session().user
     messages = [m.__dict__ for m in user.get_messages()]
-    return create_response(200, "Messages successfully retrieved.",messages)
+    return create_response(200, "Messages successfully retrieved.", messages)
 
 
 @app.route("/messages/<email>", methods=["GET"])
 def get_user_messages_by_email(email):
-    token = request.headers["X-Session-Token"]
-    identify(token)
+    identify_session()
     if not is_user_present(email):
-        raise UserNotValidError(USER_DOES_NOT_EXIST)
+        raise UserNotValidError()
 
     other_user = User.find_user(email)
     messages = [m.__dict__ for m in other_user.get_messages()]
-    return create_response(200, "Messages successfully retrieved.",messages)
+    return create_response(200, "Messages successfully retrieved.", messages)
 
 
 @app.route("/messages/<to_user_email>", methods=["POST"])
 def post_message(to_user_email):
-    user = identify(request.headers["X-Session-Token"])
+    user = identify_session().user
     data = request.get_json(force=True)
     if not _is_post_message_data_valid(data):
         abort(400)
 
-    user.post_message(to_user_email, data["message"])
+    user.post_message(to_user_email, escape(data["message"]))
     return create_response(200, "Message successfully posted.", [])
 
 
@@ -301,32 +323,32 @@ def _is_post_message_data_valid(data):
 
 @app.errorhandler(400)
 def bad_request(error):
-    return make_json(400, error.message or "Your request is probably missing data.")
+    return create_response(400, error.message or "Your request is probably missing data.", [])
 
 
 @app.errorhandler(UserNotValidError)
 def user_not_valid(error):
-    return make_json(400, error.message)
+    return create_response(400, error.message, [])
 
 
 @app.errorhandler(CouldNotPostMessageError)
 def could_not_post_message(error):
-    return make_json(400, error.message)
+    return create_response(400, error.message, [])
 
 
 @app.errorhandler(SessionNotValidError)
 def session_not_valid(error=None):
-    return make_json(401, "Session is not valid.")
+    return create_response(401, "Session is not valid.", [])
 
 
 @app.errorhandler(CouldNotLoginError)
 def could_not_login(error):
-    return make_json(401, error.message)
+    return create_response(401, error.message, [])
 
 
 @app.errorhandler(ApiError)
 def generic_error(error):
-    return make_json(error.status_code, error.message)
+    return create_response(error.status_code, error.message, [])
 
 
 if __name__ == "__main__":

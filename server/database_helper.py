@@ -113,7 +113,7 @@ def persist_session(email, token):
         conn.execute(UPDATE_SESSION, (token, email))
         conn.execute(INSERT_SESSION, (email, token))
         conn.commit()
-    except sqlite3.Error as e:
+    except sqlite3.Error:
         raise CouldNotCreateSessionError()
 
 
