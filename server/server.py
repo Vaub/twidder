@@ -14,6 +14,30 @@ DATABASE = "database.db"
 app = Flask(__name__)
 
 
+class ApiError(Exception):
+    def __init__(self, message, status_code=None):
+        super(ApiError, self).__init__(message)
+        self.status_code = status_code or 500
+
+
+class UserNotValidError(Exception):
+    def __init__(self, message=None):
+        super(UserNotValidError, self).__init__(message or "User not valid.")
+
+
+class CouldNotLoginError(Exception):
+    def __init__(self, message=None):
+        super(CouldNotLoginError, self).__init__(message or "Could not login, be sure that your credentials are valid.")
+
+
+class CouldNotPostMessageError(Exception):
+    pass
+
+
+class SessionNotValidError(Exception):
+    pass
+
+
 class Session(object):
     def __init__(self, user, token=None):
         self.user = user
@@ -101,6 +125,13 @@ class User(object):
             raise Exception("User could not be persisted???")
 
     @staticmethod
+    def exists(email):
+        try:
+            return bool(User.find_user(email))
+        except UserNotValidError:
+            return False
+
+    @staticmethod
     def find_user(email):
         try:
             user_data = db.select_user(email)
@@ -111,37 +142,6 @@ class User(object):
     @staticmethod
     def create_password(password):
         return security.generate_password_hash(password)
-
-
-def is_user_present(email):
-    try:
-        return bool(User.find_user(email))
-    except UserNotValidError:
-        return False
-
-
-class ApiError(Exception):
-    def __init__(self, message, status_code=None):
-        super(ApiError, self).__init__(message)
-        self.status_code = status_code or 500
-
-
-class UserNotValidError(Exception):
-    def __init__(self, message=None):
-        super(UserNotValidError, self).__init__(message or "User not valid.")
-
-
-class CouldNotLoginError(Exception):
-    def __init__(self, message=None):
-        super(CouldNotLoginError, self).__init__(message or "Could not login, be sure that your credentials are valid.")
-
-
-class CouldNotPostMessageError(Exception):
-    pass
-
-
-class SessionNotValidError(Exception):
-    pass
 
 
 def is_password_valid(password):
@@ -193,7 +193,7 @@ def register():
     data = request.get_json(force=True)
     user = _create_user_to_register(data)
 
-    if is_user_present(user.email):
+    if not User.exists(user.email):
         raise UserNotValidError()
 
     user.persist()
@@ -273,10 +273,8 @@ def get_user_data_by_token():
 @app.route("/users/data/<email>", methods=["GET"])
 def get_user_data_by_email(email):
     identify_session()
-    if not is_user_present(email):
-        raise UserNotValidError()
-
     other_user = User.find_user(email)
+
     return create_response(200, "Data successfully retrieved.", _create_user_info(other_user))
 
 
@@ -295,10 +293,8 @@ def get_user_messages_by_token():
 @app.route("/messages/<email>", methods=["GET"])
 def get_user_messages_by_email(email):
     identify_session()
-    if not is_user_present(email):
-        raise UserNotValidError()
-
     other_user = User.find_user(email)
+
     messages = [m.__dict__ for m in other_user.get_messages()]
     return create_response(200, "Messages successfully retrieved.", messages)
 
