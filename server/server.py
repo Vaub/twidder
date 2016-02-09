@@ -225,7 +225,13 @@ def _is_auth_data_valid(auth):
         return False
 
 
-@app.route("/users/changePassword", methods=["PUT"])
+@app.route("/logout", methods=["POST"])
+def logout():
+    identify_session().close()
+    return create_response(200, "Logout successful.", [])
+
+
+@app.route("/changePassword", methods=["PUT"])
 def change_password():
     user = identify_session().user
     data = request.get_json()
@@ -247,19 +253,13 @@ def _is_password_data_valid(data):
         return False
 
 
-@app.route("/logout", methods=["POST"])
-def logout():
-    identify_session().close()
-    return create_response(200, "Logout successful.", [])
-
-
-@app.route("/users/data", methods=["GET"])
+@app.route("/profile", methods=["GET"])
 def get_user_data_by_token():
     user = identify_session().user
     return create_response(200, "Data successfully retrieved.", _create_user_info(user))
 
 
-@app.route("/users/data/<email>", methods=["GET"])
+@app.route("/profile/<email>", methods=["GET"])
 def get_user_data_by_email(email):
     identify_session()
     other_user = User.find_user(email)
