@@ -67,6 +67,14 @@ def close_db():
     g.db.close()
 
 
+def init_database(db_filename, schema_filename):
+    with open(schema_filename, "r") as schema:
+        with sqlite3.connect(db_filename) as db:
+            query = schema.read()
+            db.executescript(query)
+            db.commit()
+
+
 def select_user(email):
     conn = g.db
     try:
@@ -79,16 +87,14 @@ def select_user(email):
         raise UserDoesNotExist()
 
 
-def persist_user(user):
-    if not _is_user_valid(user):
+def persist_user(user_data):
+    if not _is_user_valid(user_data):
         return False
 
     conn = g.db
     try:
-        conn.execute(UPDATE_USER, (user.password, user.first_name, user.family_name,
-                                   user.gender, user.city, user.country, user.email))
-        conn.execute(INSERT_USER, (user.email, user.password, user.first_name, user.family_name,
-                                   user.gender, user.city, user.country))
+        conn.execute(UPDATE_USER, (user_data["password"], user_data["first_name"], user_data["family_name"], user_data["gender"], user_data["city"], user_data["country"], user_data["email"],))
+        conn.execute(INSERT_USER, (user_data["email"], user_data["password"], user_data["first_name"], user_data["family_name"], user_data["gender"], user_data["city"], user_data["country"],))
         conn.commit()
     except sqlite3.Error:
         return False
@@ -96,12 +102,12 @@ def persist_user(user):
     return True
 
 
-def _is_user_valid(user):
+def _is_user_valid(user_data):
     try:
         return (
-            user.email and user.password and
-            user.first_name and user.family_name and
-            user.gender and user.city and user.country
+            user_data["email"] and user_data["password"] and
+            user_data["first_name"] and user_data["family_name"] and
+            user_data["gender"] and user_data["city"] and user_data["country"]
         )
     except AttributeError:
         return False

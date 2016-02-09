@@ -121,7 +121,7 @@ class User(object):
             raise CouldNotPostMessageError(COULD_NOT_POST_MESSAGE)
 
     def persist(self):
-        if not db.persist_user(self):
+        if not db.persist_user(self.__dict__):
             raise Exception("User could not be persisted???")
 
     @staticmethod
@@ -193,7 +193,7 @@ def register():
     data = request.get_json(force=True)
     user = _create_user_to_register(data)
 
-    if not User.exists(user.email):
+    if User.exists(user.email):
         raise UserNotValidError()
 
     user.persist()
@@ -348,4 +348,5 @@ def generic_error(error):
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    db.init_database(DATABASE, "database.schema")
+    app.run(debug=False)
