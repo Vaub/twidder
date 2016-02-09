@@ -157,14 +157,6 @@ def identify_session():
     return Session.find_session(token)
 
 
-def make_json(status_code, message):
-    content = {"status_code": status_code, "message": message}
-    response = json.jsonify(content)
-    response.status_code = status_code
-
-    return response
-
-
 def create_response(status_code, message, data):
     content = {"status_code": status_code, "message": message, "data": data}
     response = json.jsonify(content)
@@ -181,11 +173,6 @@ def before_request():
 @app.teardown_request
 def teardown_request(e):
     db.close_db()
-
-
-@app.route("/")
-def hello():
-    return "Hello World!"
 
 
 @app.route("/register", methods=["POST"])
