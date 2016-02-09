@@ -9,7 +9,9 @@ SESSION_TOKEN = "X-Session-Token"
 COULD_NOT_POST_MESSAGE = "Could not post message."
 
 MIN_PASSWORD_LENGTH = 6
+
 DATABASE = "database.db"
+DATABASE_SCHEMA = "database.schema"
 
 app = Flask(__name__)
 
@@ -335,5 +337,5 @@ def generic_error(error):
 
 
 if __name__ == "__main__":
-    db.init_database(DATABASE, "database.schema")
+    db.init_database(DATABASE, DATABASE_SCHEMA)
     app.run(debug=False)

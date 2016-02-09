@@ -34,10 +34,6 @@ SELECT_MESSAGES = "SELECT * FROM posts WHERE to_user = ?"
 INSERT_MESSAGE = "INSERT INTO posts(to_user, from_user, content) VALUES (?, ?, ?)"
 
 
-def _create_user_from_row(row):
-    return row
-
-
 class UserDoesNotExist(Exception):
     def __init__(self): pass
 
@@ -82,7 +78,7 @@ def select_user(email):
         if not user:
             raise UserDoesNotExist()
 
-        return _create_user_from_row(user)
+        return user
     except sqlite3.Error:
         raise UserDoesNotExist()
 
