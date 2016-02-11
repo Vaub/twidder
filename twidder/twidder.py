@@ -3,22 +3,21 @@ import uuid
 import werkzeug.security as security
 from flask import Flask, json, request, escape, abort
 
-
 import database_helper as db
+
 
 SESSION_TOKEN = "X-Session-Token"
 
 COULD_NOT_POST_MESSAGE = "Could not post message."
 
-MIN_PASSWORD_LENGTH = 6
+CONFIG = {
+    "database": "database/database.db",
+    "database_schema": "database/database.schema",
+    "min_password_length": 6
+}
 
-
-DATABASE = ""
 app = Flask(__name__)
-
-
-def init_app(database_name, database_schema):
-    db.init_database(database_name, database_schema)
+db.init_database(CONFIG["database"], CONFIG["database_schema"])
 
 
 class ApiError(Exception):
@@ -104,7 +103,7 @@ class User(object):
 
         if not is_password_valid(self.password):
             raise UserNotValidError("Password is not valid, use {min_char} characters minimum"
-                                    .format(min_chars=MIN_PASSWORD_LENGTH))
+                                    .format(min_chars=CONFIG["min_password_length"]))
 
     def check_password(self, password):
         return security.check_password_hash(self.password, password)
@@ -152,7 +151,7 @@ class User(object):
 
 
 def is_password_valid(password):
-    return password and len(password) >= MIN_PASSWORD_LENGTH
+    return password and len(password) >= CONFIG["min_password_length"]
 
 
 def is_gender_valid(gender):
@@ -174,7 +173,7 @@ def create_response(status_code, message, data):
 
 @app.before_request
 def before_request():
-    db.connect_db(DATABASE)
+    db.connect_db(CONFIG["database"])
 
 
 @app.teardown_request
