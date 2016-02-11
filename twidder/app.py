@@ -1,6 +1,8 @@
 import uuid
+
 import werkzeug.security as security
 from flask import Flask, json, request, escape, abort
+
 
 import database_helper as db
 
@@ -10,8 +12,6 @@ COULD_NOT_POST_MESSAGE = "Could not post message."
 
 MIN_PASSWORD_LENGTH = 6
 
-DATABASE = "database.db"
-DATABASE_SCHEMA = "database.schema"
 
 app = Flask(__name__)
 
@@ -336,6 +336,5 @@ def generic_error(error):
     return create_response(error.status_code, error.message, [])
 
 
-if __name__ == "__main__":
-    db.init_database(DATABASE, DATABASE_SCHEMA)
-    app.run(debug=False)
+def init_app(database_name, database_schema):
+    db.init_database(database_name, database_schema)
