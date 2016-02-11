@@ -13,7 +13,12 @@ COULD_NOT_POST_MESSAGE = "Could not post message."
 MIN_PASSWORD_LENGTH = 6
 
 
+DATABASE = ""
 app = Flask(__name__)
+
+
+def init_app(database_name, database_schema):
+    db.init_database(database_name, database_schema)
 
 
 class ApiError(Exception):
@@ -334,7 +339,3 @@ def could_not_login(error):
 @app.errorhandler(ApiError)
 def generic_error(error):
     return create_response(error.status_code, error.message, [])
-
-
-def init_app(database_name, database_schema):
-    db.init_database(database_name, database_schema)
