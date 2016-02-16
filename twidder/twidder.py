@@ -2,6 +2,7 @@ import uuid, os
 
 import werkzeug.security as security
 from flask import Flask, json, request, escape, abort, send_from_directory
+from flask_sockets import Sockets
 
 import database_helper as db
 
@@ -21,6 +22,7 @@ STATIC_FOLDER = os.path.join("twidder", "static")
 app = Flask(__name__, static_url_path='', static_folder=STATIC_FOLDER)
 app.root_path = os.getcwd()
 
+sockets = Sockets(app)
 db.init_database(CONFIG["database"], CONFIG["database_schema"])
 
 
@@ -353,3 +355,8 @@ def could_not_login(error):
 @app.errorhandler(ApiError)
 def generic_error(error):
     return create_response(error.status_code, error.message, [])
+
+@sockets.route("/messages")
+def ws_messages(ws):
+    while not ws.close:
+        message = ws.received
