@@ -6,7 +6,6 @@ from flask_sockets import Sockets
 
 import database_helper as db
 
-
 SESSION_TOKEN = "X-Session-Token"
 
 COULD_NOT_POST_MESSAGE = "Could not post message."
@@ -75,6 +74,14 @@ class Session(object):
         except (db.SessionDoesNotExistError, db.UserDoesNotExist, UserNotValidError):
             raise SessionNotValidError()
 
+    @staticmethod
+    def does_session_exist(token):
+        try:
+            Session.find_session(token)
+            return True
+        except SessionNotValidError:
+            return False
+
 
 class Post(object):
     def __init__(self, to_user, from_user, content, date_posted):
@@ -97,7 +104,7 @@ class User(object):
 
     def _validate(self):
         if not (self.email and self.password and self.first_name and self.family_name and
-                self.gender and self.city and self.country):
+                    self.gender and self.city and self.country):
             raise UserNotValidError()
 
         if not is_gender_valid(self.gender):
@@ -351,7 +358,22 @@ def could_not_login(error):
 def generic_error(error):
     return create_response(error.status_code, error.message, [])
 
+
 @sockets.route("/messages")
 def ws_messages(ws):
-    while not ws.close:
-        message = ws.received
+    token = None
+    while not ws.closed:
+        if token and Session.does_session_exist(token):
+            ws.close()
+
+        message = ws.received()
+        if not message:
+            continue
+
+        content = json.loads(message)
+        content_type = content["type"]
+
+        if content_type == "authenticate":
+            token = content_type["data"]
+        else:
+            pass
