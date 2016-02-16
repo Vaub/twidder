@@ -1,8 +1,8 @@
-DROP TABLE IF EXISTS sessions;
-DROP TABLE IF EXISTS posts;
-DROP TABLE IF EXISTS users;
+-- DROP TABLE IF EXISTS sessions;
+-- DROP TABLE IF EXISTS posts;
+-- DROP TABLE IF EXISTS users;
 
-CREATE TABLE users(
+CREATE TABLE IF NOT EXISTS users(
   email TEXT PRIMARY KEY,
   password TEXT NOT NULL,
 
@@ -13,7 +13,7 @@ CREATE TABLE users(
   country TEXT NOT NULL
 );
 
-CREATE TABLE posts(
+CREATE TABLE IF NOT EXISTS posts(
   to_user TEXT,
   from_user TEXT,
   content TEXT,
@@ -23,7 +23,7 @@ CREATE TABLE posts(
   FOREIGN KEY(from_user) REFERENCES users(email)
 );
 
-CREATE TABLE sessions(
+CREATE TABLE IF NOT EXISTS sessions(
   user TEXT UNIQUE NOT NULL,
   token TEXT NOT NULL,
 

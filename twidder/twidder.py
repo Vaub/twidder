@@ -1,7 +1,7 @@
-import uuid
+import uuid, os
 
 import werkzeug.security as security
-from flask import Flask, json, request, escape, abort
+from flask import Flask, json, request, escape, abort, send_from_directory
 
 import database_helper as db
 
@@ -308,6 +308,16 @@ def _is_post_message_data_valid(data):
         return bool(data["message"])
     except KeyError:
         return False
+
+
+@app.route("/")
+def index():
+    return app.send_static_file("client.html")
+
+
+@app.route("/<path:path>")
+def static_js(path):
+    return send_from_directory('twidder/static', path)
 
 
 @app.errorhandler(400)
