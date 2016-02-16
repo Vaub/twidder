@@ -16,7 +16,11 @@ CONFIG = {
     "min_password_length": 6
 }
 
-app = Flask(__name__)
+STATIC_FOLDER = os.path.join("twidder", "static")
+
+app = Flask(__name__, static_url_path='', static_folder=STATIC_FOLDER)
+app.root_path = os.getcwd()
+
 db.init_database(CONFIG["database"], CONFIG["database_schema"])
 
 
@@ -311,13 +315,14 @@ def _is_post_message_data_valid(data):
 
 
 @app.route("/")
-def index():
-    return app.send_static_file("client.html")
+def main():
+    path = os.path.join("client.html")
+    return app.send_static_file(path)
 
 
-@app.route("/<path:path>")
-def static_js(path):
-    return send_from_directory('twidder/static', path)
+@app.route("/<name>")
+def static_resources(name):
+    return send_from_directory(STATIC_FOLDER, name)
 
 
 @app.errorhandler(400)
