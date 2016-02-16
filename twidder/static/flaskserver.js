@@ -2,31 +2,70 @@
 
 var noCallback = function(){};
 
-function MessagesChannel(endpoint, onMessageReception) {
+/**
+ * Creates a websocket to send messages between the server and the user
+ *
+ * @param token Token channel
+ * @param onMessageReception
+ * @param endpoint
+ */
+function MessagesChannel(token, endpoint) {
+    var wsEndpoint = (endpoint || ("ws://" + location.host)) + "/messages";
+    var socket = new WebSocket(wsEndpoint, "protocolOne");
 
-    var socket = new WebSocket(endpoint, "protocolOne");
+    socket.onopen = function(event) {
+        var data = {
+            "type": "authenticate",
+            "data": token
+        };
+        socket.send(JSON.stringify(data))
+    };
 
-    socket.onmessage = function(event) {
-        var onMessageCallback = onMessageReception || noCallback;
-        switch(event.type) {
-            case "message":
-                onMessageCallback(event.data);
-                break;
-            default:
-                console.error("Unknown message from server.");
-                console.error(event);
+    var createOnMessageEvent = function(callback) {
+        var onMessageCallback = callback || noCallback;
+
+        return function(event) {
+            switch(event.type) {
+                case "message":
+                    onMessageCallback(event.data);
+                    break;
+                default:
+                    console.warn("Unhandled message from server.");
+                    console.log(event);
+            }
         }
     };
 
+    var changeUser = function(to_user) {
+        var data = {
+            "type": "user",
+            "data": to_user
+        };
+
+        socket.send(JSON.stringify(data));
+    };
+
     return {
-        send: function(to_user, message) {
+        /**
+         * @param {string} message
+         */
+        send: function(message) {
             var data = {
                 "type": "message",
-                "to_user": to_user,
+                "token": token,
                 "message": message
             };
 
             socket.send(JSON.stringify(data));
+        },
+
+        /**
+         * @param {string} to_user
+         * @param {function} onMessageReception
+         */
+        switchUser: function(to_user, onMessageReception) {
+            changeUser(to_user);
+            socket.onmessage = createOnMessageEvent(onMessageReception);
         },
 
         close: function() {
