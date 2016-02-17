@@ -152,7 +152,7 @@ function Wall(getProfileFunction, getMessagesFunction, postMessageFunction) {
         var profile = wallNode.getElementsByClassName("profile")[0];
 
         profile.getElementsByClassName("profile_email")[0].innerText = data.email;
-        profile.getElementsByClassName("profile_name")[0].innerText = data.firstname +" "+ data.familyname;
+        profile.getElementsByClassName("profile_name")[0].innerText = data.first_name +" "+ data.family_name;
         profile.getElementsByClassName("profile_gender")[0].innerText = (data.gender === "m") ? "Male" : "Female";
         profile.getElementsByClassName("profile_city")[0].innerText = data.city;
         profile.getElementsByClassName("profile_country")[0].innerText = data.country;
@@ -166,7 +166,7 @@ function Wall(getProfileFunction, getMessagesFunction, postMessageFunction) {
         Array.prototype.forEach.call(posts, function(post) {
             var newPostNode = postNode.cloneNode(true);
             newPostNode.getElementsByClassName("post_text")[0].innerText = post.content;
-            newPostNode.getElementsByClassName("post_user")[0].innerText = "by "+ post.writer;
+            newPostNode.getElementsByClassName("post_user")[0].innerText = "by "+ post.from_user;
             newWall.appendChild(newPostNode);
         });
 
@@ -175,22 +175,24 @@ function Wall(getProfileFunction, getMessagesFunction, postMessageFunction) {
     }
 
     function refreshWall() {
-        var response = getMessagesFunction();
-        if (!response.success) {
-            messages.newError(response.message);
-            return false;
-        }
-
-        fillWall(response.data);
+        getMessagesFunction(
+            function(response) {
+                fillWall(response.data);
+            },
+            function(response) {
+                messages.newError(response.message);
+            }
+        );
     }
 
     function postMessage(message) {
-        var response = postMessageFunction(message);
-        if (!response.success) {
-            message.newError(response.message);
-        }
-
-        return response.success;
+        postMessageFunction(
+            message,
+            noCallback,
+            function(response) {
+               message.newError(response.message);
+            }
+        );
     }
 
     function createHandlers() {
@@ -213,17 +215,13 @@ function Wall(getProfileFunction, getMessagesFunction, postMessageFunction) {
     }
 
     function init() {
-        var messagesResponse = getMessagesFunction();
-        var profileResponse = getProfileFunction();
+        var messagesResponse = getMessagesFunction(function(response) {
+            fillWall(response.data);
+        });
+        var profileResponse = getProfileFunction(function(response) {
+            populateProfile(response.data);
+        });
         createHandlers();
-
-        if (profileResponse.success) {
-            populateProfile(profileResponse.data)
-        }
-
-        if (messagesResponse.success) {
-            fillWall(messagesResponse.data)
-        }
     }
 
     init();
@@ -267,16 +265,26 @@ function SignedInView(session) {
         var changePasswordForm = document.getElementById("change_password");
         var signOut = document.getElementById("sign_out");
 
+        var passwordChangedCallback = function(message, isSuccess) {
+            changePasswordForm.oldPassword.value = "";
+            changePasswordForm.newPassword.value = "";
+            messages.newStatusMessage(message, isSuccess);
+        };
+
         changePasswordForm.onsubmit = function () {
             var oldPassword = changePasswordForm.oldPassword.value;
             var newPassword = changePasswordForm.newPassword.value;
 
-            if(Utils.isPasswordLengthValid(newPassword)){
-                var response = session.changePassword(oldPassword, newPassword);
-                messages.newStatusMessage(response.message, response.success);
+            if(Utils.isPasswordLengthValid(newPassword)) {
 
-                changePasswordForm.oldPassword.value = "";
-                changePasswordForm.newPassword.value = "";
+                session.changePassword(oldPassword, newPassword,
+                    function(response) {
+                        passwordChangedCallback(response.message, true);
+                    },
+                    function(response) {
+                        passwordChangedCallback(response.message, false);
+                    });
+
             } else {
                 messages.newError("Password is empty or too short, try again!");
             }
@@ -292,9 +300,9 @@ function SignedInView(session) {
     function createHomeTab() {
         var homeViewContainer = document.getElementById("home_view_container");
 
-        var getHomeProfile = function() { return session.getCurrentUserData(); };
-        var getHomeMessages = function() { return session.getCurrentUserMessages(); };
-        var postHomeMessage = function(message) { return session.postMessageOnWall(message) };
+        var getHomeProfile = function(s, e) { session.getCurrentUserData(s, e); };
+        var getHomeMessages = function(s, e) { session.getCurrentUserMessages(s, e); };
+        var postHomeMessage = function(message, s, e) { session.postMessageOnWall(message, s, e) };
 
         var homeWall = new Wall(getHomeProfile, getHomeMessages, postHomeMessage);
         Utils.removeAllChild(homeViewContainer);
@@ -307,21 +315,22 @@ function SignedInView(session) {
 
         searchForm.onsubmit = function(){
             var email = searchForm.otherUsername.value;
-            var response = session.getOtherUserDataByEmail(email);
 
-            if(response.success){
-                var getBrowseProfile = function() { return session.getOtherUserDataByEmail(email); };
-                var getBrowseMessages = function() { return session.getOtherUserMessagesByEmail(email); };
-                var postBrowseMessage = function(message) { return session.postMessage(message, email); };
+            var successCallback = function(response) {
+                var getBrowseProfile = function(s, e) { session.getOtherUserDataByEmail(email, s, e); };
+                var getBrowseMessages = function(s, e) { session.getOtherUserMessagesByEmail(email, s, e); };
+                var postBrowseMessage = function(message, s, e) { session.postMessage(message, email, s, e); };
 
                 var browseWall = new Wall(getBrowseProfile, getBrowseMessages, postBrowseMessage);
                 Utils.removeAllChild(browseViewContainer);
                 browseViewContainer.appendChild(browseWall.element);
 
-            } else {
+            };
+            var errorCallback = function(response) {
                 messages.newError(response.message);
-            }
+            };
 
+            session.getOtherUserDataByEmail(email, successCallback, errorCallback);
             return false;
         };
     }
@@ -388,10 +397,7 @@ function WelcomeView(session) {
                 var userEmail = login.user_email;
                 var userPassword = login.user_password;
 
-                var response = session.signIn(userEmail.value, userPassword.value);
-                if (!response.success) {
-                    messages.newError(response.message);
-                }
+                session.signIn(userEmail.value, userPassword.value);
             }
 
             return false;
@@ -403,8 +409,8 @@ function WelcomeView(session) {
                 var signUpForm = {
                     email: signup.username.value,
                     password: signup.password.value,
-                    firstname: signup.first_name.value,
-                    familyname: signup.family_name.value,
+                    first_name: signup.first_name.value,
+                    family_name: signup.family_name.value,
                     gender: signup.gender.value,
                     city: signup.city.value,
                     country: signup.country.value
@@ -440,11 +446,11 @@ function Session(server, notifySessionChange) {
     }
 
     return {
-        signUp: function (userForm, onSuccess, onError) {
-            var self = this;
+        signUp: function (userForm) {
+            var that = this;
 
             var loginSuccess = function(response) {
-                self.signIn(userForm.email, userForm.password);
+                that.signIn(userForm.email, userForm.password);
                 messages.newSuccess(response.message);
             };
             var loginError = function(response) { messages.newError(response.message) };
@@ -457,70 +463,116 @@ function Session(server, notifySessionChange) {
         },
 
         signIn: function (username, password, onSuccess, onError) {
-            var response = server.signIn(username, password);
+            var successCallback = onSuccess || noCallback;
+            var errorCallback = onError || noCallback;
 
-            if (response.success) {
+            var signInSuccess = function(response) {
                 changeToken(response.data);
                 notifySessionChange();
-            }
 
-            return {success: response.success, message: response.message};
+                successCallback(response);
+            };
+
+            var signInError = function(response) {
+                messages.newError(response.message);
+                errorCallback(response);
+            };
+
+            server
+                .signIn(username, password)
+                .onSuccess(signInSuccess)
+                .onError(signInError)
+                .send();
         },
 
-        isSignedIn: function () {
-            var response = server.getUserMessagesByToken(sessionToken);
-            return response.success;
+        isSignedIn: function(signedInCallback, notSignedInCallback) {
+            var successCallback = function() { ( signedInCallback || noCallback )(); };
+            var errorCallback = function() { ( notSignedInCallback || noCallback )(); };
+
+            server.getUserDataByToken(sessionToken)
+                .onSuccess(signedInCallback)
+                .onError(notSignedInCallback)
+                .send();
         },
 
         signOut: function () {
-            server.signOut(sessionToken);
-            notifySessionChange();
+            server
+                .signOut(sessionToken)
+                .onSuccess(notifySessionChange)
+                .send();
         },
 
-        changePassword: function (oldPassword, newPassword) {
-            var response = server.changePassword(sessionToken, oldPassword, newPassword);
-            return {success: response.success, message: response.message};
+        changePassword: function (oldPassword, newPassword, onSuccess, onError) {
+            server
+                .changePassword(sessionToken, oldPassword, newPassword)
+                .onSuccess(onSuccess || noCallback)
+                .onError(onError || noCallback)
+                .send();
         },
 
-        getCurrentUserData: function() {
-            return server.getUserDataByToken(sessionToken);
+        getCurrentUserData: function(onSuccess, onError) {
+            server
+                .getUserDataByToken(sessionToken)
+                .onSuccess(onSuccess || noCallback)
+                .onError(onError || noCallback)
+                .send();
         },
 
-        getCurrentUserMessages: function () {
-            return server.getUserMessagesByToken(sessionToken);
+        getCurrentUserMessages: function (onSuccess, onError) {
+            server
+                .getUserMessagesByToken(sessionToken)
+                .onSuccess(onSuccess || noCallback)
+                .onError(onError || noCallback)
+                .send();
         },
 
-        postMessage: function(message, toEmail) {
-            return server.postMessage(sessionToken, message, toEmail);
+        postMessage: function(message, toEmail, onSuccess, onError) {
+            server
+                .postMessage(sessionToken, message, toEmail)
+                .onSuccess(onSuccess)
+                .onError(onError)
+                .send();
         },
 
-        postMessageOnWall: function(message) {
-            var response = this.getCurrentUserData();
-            if (!response.success) {
-                return { success: response.success, message: response.message }
-            }
+        postMessageOnWall: function(message, onSuccess, onError) {
+            var that = this;
 
-            var email = response.data.email;
-            return this.postMessage(message, email);
+            this.getCurrentUserData(
+                function(response) {
+                    that.postMessage(message, response.data.email, onSuccess, onError);
+                },
+                function(response) {
+                    onError(response);
+                }
+            );
         },
 
-        getOtherUserDataByEmail: function(email){
-            return server.getUserDataByEmail(sessionToken, email);
+        getOtherUserDataByEmail: function(email, onSuccess, onError){
+            server
+                .getUserDataByEmail(sessionToken, email)
+                .onSuccess(onSuccess)
+                .onError(onError)
+                .send();
         },
 
-        getOtherUserMessagesByEmail: function(email){
-            return server.getUserMessagesByEmail(sessionToken, email);
+        getOtherUserMessagesByEmail: function(email, onSuccess, onError){
+            server
+                .getUserMessagesByEmail(sessionToken, email)
+                .onSuccess(onSuccess)
+                .onError(onError)
+                .send();
         }
     }
 }
 
 // Main "refresh" of the website
 var displayView = function () {
-    if (session.isSignedIn()) {
-        signedInView.displayView();
-    } else {
-        welcomeView.displayView();
-    }
+    session.isSignedIn(
+        function() {
+            signedInView.displayView(); },
+        function() {
+            welcomeView.displayView(); }
+    );
 };
 
 // "App" constructor

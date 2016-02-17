@@ -1,7 +1,5 @@
 'use strict';
 
-var noCallback = function(){};
-
 /**
  * A promise object to wrap an XMLHttpRequest
  * @param {XMLHttpRequest} xhr
@@ -16,19 +14,19 @@ function XhrSender(xhr, content) {
         return status >= 200 && status < 400;
     }
 
-    function runPromise(success, error) {
-
+    function runPromise() {
         xhr.onreadystatechange = function () {
             if (xhr.readyState != XMLHttpRequest.DONE) {
                 return;
             }
 
+            var response = JSON.parse(xhr.response);
             isStatusValid(xhr.status) ?
-                onSuccessCallback(xhr.response) :
-                onErrorCallback(xhr.response);
+                onSuccessCallback(response) :
+                onErrorCallback(response);
         };
 
-        content ? xhr.send(content) : xhr.send();
+        xhr.send(content || "")
     }
 
     return {
@@ -53,7 +51,7 @@ function XhrSender(xhr, content) {
         },
 
         send: function() {
-            runPromise(onSuccessCallback, onErrorCallback);
+            runPromise();
         }
     }
 
@@ -91,7 +89,7 @@ function WebsocketChannel(sessionToken, onClose, endpoint) {
 
 function Server(endpoint) {
 
-    endpoint = (endpoint || (location.protocol + location.host));
+    endpoint = (endpoint || (location.protocol + "//" + location.host));
 
     function encodeJsonXhr(xhr, data) {
         xhr.setRequestHeader("Content-Type", "application/json");
@@ -101,7 +99,8 @@ function Server(endpoint) {
     return {
         signIn: function(email, password) {
             var xhr = new XMLHttpRequest();
-            xhr.open("POST", endpoint + "/login", true, email, password);
+            xhr.open("POST", endpoint + "/login", true);
+            xhr.setRequestHeader("Authorization", "Basic " + btoa(email + ":" + password));
 
             return new XhrSender(xhr);
         },
@@ -117,9 +116,9 @@ function Server(endpoint) {
         signUp: function(data) {
             var xhr = new XMLHttpRequest();
             xhr.open("POST", endpoint + "/register", true);
-            encodeJsonXhr(xhr, data);
+            var content = encodeJsonXhr(xhr, data);
 
-            return new XhrSender(xhr);
+            return new XhrSender(xhr, content);
         },
 
         getUserMessagesByToken: function(token) {
@@ -146,9 +145,9 @@ function Server(endpoint) {
             var data = {
                 "message": content
             };
-            encodeJsonXhr(xhr, data);
+            var content = encodeJsonXhr(xhr, data);
 
-            return new XhrSender(xhr);
+            return new XhrSender(xhr, content);
         },
 
         getUserDataByToken: function(token) {
@@ -176,9 +175,9 @@ function Server(endpoint) {
                 "oldPassword": oldPassword,
                 "newPassword": newPassword
             };
-            encodeJsonXhr(xhr, data);
+            var content = encodeJsonXhr(xhr, data);
 
-            return new XhrSender(xhr);
+            return new XhrSender(xhr, content);
         }
     }
 }
