@@ -190,7 +190,6 @@ function Wall(getProfileFunction, getMessagesFunction, postMessageFunction) {
             message,
             function(response) {
                 refreshWall();
-                postText.value = "";
             },
             function(response) {
                message.newError(response.message);
@@ -205,6 +204,7 @@ function Wall(getProfileFunction, getMessagesFunction, postMessageFunction) {
         postForm.onsubmit = function() {
             if (postText.value) {
                 postMessage(postText.value);
+                postText.value = "";
             }
 
             return false;
