@@ -3,71 +3,86 @@
 var noCallback = function(){};
 
 /**
- * Creates a websocket to send messages between the server and the user
- *
- * @param token Token channel
- * @param onMessageReception
- * @param endpoint
+ * A promise object to wrap an XMLHttpRequest
+ * @param {XMLHttpRequest} xhr
+ * @param {string} [content]
  */
-function MessagesChannel(token, endpoint) {
-    var wsEndpoint = (endpoint || ("ws://" + location.host)) + "/messages";
-    var socket = new WebSocket(wsEndpoint, "protocolOne");
+function XhrSender(xhr, content) {
 
-    socket.onopen = function(event) {
-        var data = {
-            "type": "authenticate",
-            "data": token
-        };
-        socket.send(JSON.stringify(data))
-    };
+    var onSuccessCallback = noCallback,
+        onErrorCallback = noCallback;
 
-    var createOnMessageEvent = function(callback) {
-        var onMessageCallback = callback || noCallback;
+    function isStatusValid(status) {
+        return status >= 200 && status < 400;
+    }
 
-        return function(event) {
-            switch(event.type) {
-                case "message":
-                    onMessageCallback(event.data);
-                    break;
-                default:
-                    console.warn("Unhandled message from server.");
-                    console.log(event);
+    function runPromise(success, error) {
+
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState != XMLHttpRequest.DONE) {
+                return;
             }
-        }
-    };
 
-    var changeUser = function(to_user) {
-        var data = {
-            "type": "user",
-            "data": to_user
+            isStatusValid(xhr.status) ?
+                onSuccessCallback(xhr.response) :
+                onErrorCallback(xhr.response);
         };
 
-        socket.send(JSON.stringify(data));
-    };
+        content ? xhr.send(content) : xhr.send();
+    }
 
     return {
         /**
-         * @param {string} message
+         * @param {function} callback
          */
-        send: function(message) {
-            var data = {
-                "type": "message",
-                "token": token,
-                "message": message
-            };
-
-            socket.send(JSON.stringify(data));
+        onSuccess: function(callback) {
+            if (callback) {
+                onSuccessCallback = callback;
+            }
+            return this;
         },
 
         /**
-         * @param {string} to_user
-         * @param {function} onMessageReception
+         * @param {function} callback
          */
-        switchUser: function(to_user, onMessageReception) {
-            changeUser(to_user);
-            socket.onmessage = createOnMessageEvent(onMessageReception);
+        onError: function(callback) {
+            if (callback) {
+                onErrorCallback = callback;
+            }
+            return this;
         },
 
+        send: function() {
+            runPromise(onSuccessCallback, onErrorCallback);
+        }
+    }
+
+}
+
+/**
+ * @param {string} sessionToken
+ * @param {function} onClose
+ * @param {string} [endpoint]
+ */
+function WebsocketChannel(sessionToken, onClose, endpoint) {
+    var onCloseCallback = onClose || noCallback;
+
+    var wsEndpoint = (endpoint || ("ws://" + location.host)) + "/messages";
+    var socket = new WebSocket(wsEndpoint, "protocolOne");
+
+    socket.onopen = function() {
+        var data = {
+            "type": "authenticate",
+            "data": sessionToken
+        };
+        socket.send(JSON.stringify(data));
+    };
+
+    socket.onclose = function(event) {
+        onCloseCallback();
+    };
+
+    return {
         close: function() {
             socket.close();
         }
@@ -78,46 +93,92 @@ function Server(endpoint) {
 
     endpoint = (endpoint || (location.protocol + location.host));
 
-    function isStatusValid(status) {
-        return status >= 200 && status < 400;
-    }
-
-    function defaultReadyStateCall(xhr, onSuccess, onError) {
-        if (!(xhr instanceof XMLHttpRequest)) { return; }
-        var successCallback = onSuccess || noCallback;
-        var errorCallback = onError || noCallback;
-
-        return function() {
-            if (xhr.readyState != XMLHttpRequest.DONE) { return; }
-            isStatusValid(xhr.status) ? successCallback() : errorCallback();
-        }
+    function encodeJsonXhr(xhr, data) {
+        xhr.setRequestHeader("Content-Type", "application/json");
+        return JSON.stringify(data);
     }
 
     return {
-        signIn: function(email, password, onSuccess, onError) {
+        signIn: function(email, password) {
             var xhr = new XMLHttpRequest();
             xhr.open("POST", endpoint + "/login", true, email, password);
 
-            xhr.onreadystatechange = defaultReadyStateCall(xhr, onSuccess, onError);
-            xhr.send();
+            return new XhrSender(xhr);
         },
 
-        signOut: function(token, onSuccess, onError) {
+        signOut: function(token) {
             var xhr = new XMLHttpRequest();
             xhr.open("POST", endpoint + "/logout", true);
             xhr.setRequestHeader("X-Session-Token", token);
 
-            xhr.onreadystatechange = defaultReadyStateCall(xhr, onSuccess, onError);
-            xhr.send();
+            return new XhrSender(xhr);
         },
 
-        signUp: function(data, onSuccess, onError) {
+        signUp: function(data) {
             var xhr = new XMLHttpRequest();
             xhr.open("POST", endpoint + "/register", true);
-            xhr.setRequestHeader("Content-Type", "application/json");
+            encodeJsonXhr(xhr, data);
 
-            xhr.onreadystatechange = defaultReadyStateCall(xhr, onSuccess, onError);
-            xhr.send(JSON.stringify(data))
+            return new XhrSender(xhr);
+        },
+
+        getUserMessagesByToken: function(token) {
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", endpoint + "/messages", true);
+            xhr.setRequestHeader("X-Session-Token", token);
+
+            return new XhrSender(xhr);
+        },
+
+        getUserMessagesByEmail: function(token, email) {
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", endpoint + "/messages/" + email, true);
+            xhr.setRequestHeader("X-Session-Token", token);
+
+            return new XhrSender(xhr);
+        },
+
+        postMessage: function(token, content, toEmail) {
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", endpoint + "/messages/" + toEmail, true);
+            xhr.setRequestHeader("X-Session-Token", token);
+
+            var data = {
+                "message": content
+            };
+            encodeJsonXhr(xhr, data);
+
+            return new XhrSender(xhr);
+        },
+
+        getUserDataByToken: function(token) {
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", endpoint + "/profile", true);
+            xhr.setRequestHeader("X-Session-Token", token);
+
+            return XhrSender(xhr);
+        },
+
+        getUserDataByEmail: function(token, email) {
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", endpoint + "/profile/" + email, true);
+            xhr.setRequestHeader("X-Session-Token", token);
+
+            return XhrSender(xhr);
+        },
+
+        changePassword: function(token, oldPassword, newPassword) {
+            var xhr = new XMLHttpRequest();
+            xhr.open("PUT", endpoint + "/changePassword", true);
+            xhr.setRequestHeader("X-Session-Token", token);
+
+            var data = {
+                "oldPassword": oldPassword,
+                "newPassword": newPassword
+            };
+            encodeJsonXhr(xhr, data);
+
+            return new XhrSender(xhr);
         }
     }
 }

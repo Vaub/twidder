@@ -2,6 +2,7 @@
 
 var messages;
 
+var server;
 var session;
 var signedInView;
 var welcomeView;
@@ -424,9 +425,10 @@ function WelcomeView(session) {
     };
 }
 
-// Session encapsulate the current session state.
-// Upon changes to this state, it'll use the notifySessionChange method
-// ( Currently the displayView() )
+/**
+ * @param server
+ * @param {function} notifySessionChange
+ */
 function Session(server, notifySessionChange) {
     var TOKEN = "sessionToken";
 
@@ -438,17 +440,25 @@ function Session(server, notifySessionChange) {
     }
 
     return {
-        signUp: function (userForm) {
-            var response = server.signUp(userForm);
+        signUp: function (userForm, onSuccess, onError) {
+            var self = this;
 
-            if (response.success) {
-                this.signIn(userForm.email, userForm.password);
-            }
-            messages.newStatusMessage(response.message, response.success);
+            var loginSuccess = function(response) {
+                self.signIn(userForm.email, userForm.password);
+                messages.newSuccess(response.message);
+            };
+            var loginError = function(response) { messages.newError(response.message) };
+
+            server
+                .signUp(userForm)
+                .onSuccess(loginSuccess)
+                .onError(loginError)
+                .send();
         },
 
-        signIn: function (username, password) {
+        signIn: function (username, password, onSuccess, onError) {
             var response = server.signIn(username, password);
+
             if (response.success) {
                 changeToken(response.data);
                 notifySessionChange();
@@ -519,7 +529,8 @@ window.onload = function () {
 
     messages = new Messages(messagesDefaultTimeout);
 
-    session = new Session(serverstub, displayView);
+    server = new Server();
+    session = new Session(server, displayView);
     signedInView = new SignedInView(session);
     welcomeView = new WelcomeView(session);
 
