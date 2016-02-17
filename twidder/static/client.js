@@ -188,7 +188,10 @@ function Wall(getProfileFunction, getMessagesFunction, postMessageFunction) {
     function postMessage(message) {
         postMessageFunction(
             message,
-            noCallback,
+            function(response) {
+                refreshWall();
+                postText.value = "";
+            },
             function(response) {
                message.newError(response.message);
             }
@@ -200,11 +203,10 @@ function Wall(getProfileFunction, getMessagesFunction, postMessageFunction) {
         var refreshButton = wallNode.getElementsByClassName("wall_refresh")[0];
 
         postForm.onsubmit = function() {
-            if (postText.value && postMessage(postText.value)) {
-                postText.value = "";
+            if (postText.value) {
+                postMessage(postText.value);
             }
 
-            refreshWall();
             return false;
         };
 
