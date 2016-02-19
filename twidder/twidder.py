@@ -145,8 +145,11 @@ class User(object):
             raise Exception("User could not be persisted???")
 
     def __eq__(self, other):
-        if isinstance(self, other):
+        if isinstance(other, User):
             return self.email == other.email
+
+    def __hash__(self):
+        return self.email.__hash__()
 
     @staticmethod
     def exists(email):
@@ -393,10 +396,8 @@ def _websocket_connection(ws):
         if content_type == "authenticate":
             token = content["data"]
             user = Session.find_session(token).user
-            socket = connected_socket.pop(user)
-            connected_socket[user] = token
 
-            if socket:
-                socket.close()
+            connected_socket.pop(user).close() if user in connected_socket else None
+            connected_socket[user] = ws
         else:
             pass

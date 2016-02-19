@@ -458,11 +458,11 @@ function Session(server, notifySessionChange) {
         sessionToken = token;
     }
 
-    function signOutFromServer(onSuccess, onError) {
+    function signOutFromServer() {
         server
             .signOut(sessionToken)
-            .onSuccess(onSuccess)
-            .onError(onError)
+            .onSuccess(notifySessionChange)
+            .onError(notifySessionChange)
             .send();
     }
 
@@ -523,7 +523,7 @@ function Session(server, notifySessionChange) {
                 channel.close();
             }
 
-            signOutFromServer(notifySessionChange, notifySessionChange);
+            signOutFromServer();
         },
 
         changePassword: function (oldPassword, newPassword, onSuccess, onError) {
