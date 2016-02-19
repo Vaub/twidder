@@ -14,7 +14,7 @@ function XhrSender(xhr, content) {
         return status >= 200 && status < 400;
     }
 
-    function runPromise() {
+    function runXhr() {
         xhr.onreadystatechange = function () {
             if (xhr.readyState != XMLHttpRequest.DONE) {
                 return;
@@ -51,7 +51,7 @@ function XhrSender(xhr, content) {
         },
 
         send: function() {
-            runPromise();
+            runXhr();
         }
     }
 

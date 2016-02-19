@@ -441,6 +441,7 @@ function Session(server, notifySessionChange) {
     var TOKEN = "sessionToken";
 
     var sessionToken = localStorage.getItem(TOKEN);
+    var channel;
 
     function changeToken(token) {
         localStorage.setItem(TOKEN, token);
@@ -467,10 +468,15 @@ function Session(server, notifySessionChange) {
         signIn: function (username, password, onSuccess, onError) {
             var successCallback = onSuccess || noCallback;
             var errorCallback = onError || noCallback;
+            var that = this;
 
             var signInSuccess = function(response) {
                 changeToken(response.data);
                 notifySessionChange();
+
+                channel = new WebsocketChannel(sessionToken, function(){
+                    that.signOut();
+                });
 
                 successCallback(response);
             };
@@ -498,6 +504,7 @@ function Session(server, notifySessionChange) {
         },
 
         signOut: function () {
+            channel.close();
             server
                 .signOut(sessionToken)
                 .onSuccess(notifySessionChange)
