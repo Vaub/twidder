@@ -519,10 +519,9 @@ function Session(server, notifySessionChange) {
         },
 
         signOut: function () {
-            if (channel instanceof WebSocket) {
+            if (channel) {
                 channel.close();
             }
-
             signOutFromServer();
         },
 

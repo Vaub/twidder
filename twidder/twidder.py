@@ -395,9 +395,19 @@ def _websocket_connection(ws):
 
         if content_type == "authenticate":
             token = content["data"]
-            user = Session.find_session(token).user
-
-            connected_socket.pop(user).close() if user in connected_socket else None
-            connected_socket[user] = ws
+            if not _authenticate_user(token, ws):
+                ws.close()
         else:
             pass
+
+
+def _authenticate_user(token, ws):
+    try:
+        user = Session.find_session(token).user
+    except SessionNotValidError:
+        print("Session {} did not exists".format(token))
+        return False
+
+    connected_socket.pop(user).close() if user in connected_socket else None
+    connected_socket[user] = ws
+    return True
