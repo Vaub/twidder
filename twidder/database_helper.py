@@ -29,7 +29,7 @@ INSERT_SESSION = "INSERT OR IGNORE INTO sessions(user, token) VALUES (?, ?)"
 
 DELETE_SESSION = "DELETE FROM sessions WHERE token = ?"
 
-SELECT_MESSAGES = "SELECT * FROM posts WHERE to_user = ?"
+SELECT_MESSAGES = "SELECT * FROM posts WHERE to_user = ? ORDER BY date_posted DESC"
 
 INSERT_MESSAGE = "INSERT INTO posts(to_user, from_user, content) VALUES (?, ?, ?)"
 
