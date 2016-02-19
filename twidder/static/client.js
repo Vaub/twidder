@@ -443,9 +443,27 @@ function Session(server, notifySessionChange) {
     var sessionToken = localStorage.getItem(TOKEN);
     var channel;
 
+    if (sessionToken) {
+        createChannel();
+    }
+
+    function createChannel() {
+        channel = new WebsocketChannel(sessionToken, function() {
+            signOutFromServer();
+        });
+    }
+
     function changeToken(token) {
         localStorage.setItem(TOKEN, token);
         sessionToken = token;
+    }
+
+    function signOutFromServer(onSuccess, onError) {
+        server
+            .signOut(sessionToken)
+            .onSuccess(onSuccess)
+            .onError(onError)
+            .send();
     }
 
     return {
@@ -472,12 +490,9 @@ function Session(server, notifySessionChange) {
 
             var signInSuccess = function(response) {
                 changeToken(response.data);
+                createChannel();
+
                 notifySessionChange();
-
-                channel = new WebsocketChannel(sessionToken, function(){
-                    that.signOut();
-                });
-
                 successCallback(response);
             };
 
@@ -508,11 +523,7 @@ function Session(server, notifySessionChange) {
                 channel.close();
             }
 
-            server
-                .signOut(sessionToken)
-                .onSuccess(notifySessionChange)
-                .onError(notifySessionChange)
-                .send();
+            signOutFromServer(notifySessionChange, notifySessionChange);
         },
 
         changePassword: function (oldPassword, newPassword, onSuccess, onError) {

@@ -1,6 +1,7 @@
 import uuid, os
 
 import werkzeug.security as security
+from geventwebsocket import WebSocketError
 from flask import Flask, json, request, escape, abort, send_from_directory
 from flask_sockets import Sockets
 
@@ -361,9 +362,16 @@ def generic_error(error):
 
 @sockets.route("/messages")
 def ws_messages(ws):
-    token = None
     before_request()
 
+    try:
+        _websocket_connection(ws)
+    except WebSocketError as e:
+        print("Error in WS: {}".format(e))
+
+
+def _websocket_connection(ws):
+    token = None
     while not ws.closed:
         if token and not Session.does_session_exist(token):
             ws.close()
