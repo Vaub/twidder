@@ -60,7 +60,10 @@ def connect_db(filename):
 
 
 def close_db():
-    g.db.close()
+    try:
+        g.db.close()
+    except Exception as e:
+        print(e)
 
 
 def init_database(db_filename, schema_filename):

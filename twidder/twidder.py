@@ -189,11 +189,6 @@ def before_request():
     db.connect_db(CONFIG["database"])
 
 
-@app.teardown_request
-def teardown_request(e):
-    db.close_db()
-
-
 @app.route("/register", methods=["POST"])
 def register():
     data = request.get_json(force=True)
@@ -367,11 +362,13 @@ def generic_error(error):
 @sockets.route("/messages")
 def ws_messages(ws):
     token = None
+    before_request()
+
     while not ws.closed:
-        if token and Session.does_session_exist(token):
+        if token and not Session.does_session_exist(token):
             ws.close()
 
-        message = ws.received()
+        message = ws.receive()
         if not message:
             continue
 
@@ -379,6 +376,6 @@ def ws_messages(ws):
         content_type = content["type"]
 
         if content_type == "authenticate":
-            token = content_type["data"]
+            token = content["data"]
         else:
             pass

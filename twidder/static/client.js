@@ -504,10 +504,14 @@ function Session(server, notifySessionChange) {
         },
 
         signOut: function () {
-            channel.close();
+            if (channel instanceof WebSocket) {
+                channel.close();
+            }
+
             server
                 .signOut(sessionToken)
                 .onSuccess(notifySessionChange)
+                .onError(notifySessionChange)
                 .send();
         },
 

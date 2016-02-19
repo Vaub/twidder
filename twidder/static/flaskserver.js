@@ -66,7 +66,7 @@ function WebsocketChannel(sessionToken, onClose, endpoint) {
     var onCloseCallback = onClose || noCallback;
 
     var wsEndpoint = (endpoint || ("ws://" + location.host)) + "/messages";
-    var socket = new WebSocket(wsEndpoint, "protocolOne");
+    var socket = new WebSocket(wsEndpoint);
 
     socket.onopen = function() {
         var data = {

@@ -16,4 +16,4 @@ def run_server(port=5000, debug=False):
     http_server.serve_forever()
 
 
-run_server(debug=True)
+run_server(debug=False)
