@@ -144,6 +144,10 @@ class User(object):
         if not db.persist_user(self.__dict__):
             raise Exception("User could not be persisted???")
 
+    def __eq__(self, other):
+        if isinstance(self, other):
+            return self.email == other.email
+
     @staticmethod
     def exists(email):
         try:
@@ -360,6 +364,9 @@ def generic_error(error):
     return create_response(error.status_code, error.message, [])
 
 
+connected_socket = {}
+
+
 @sockets.route("/messages")
 def ws_messages(ws):
     before_request()
@@ -385,5 +392,11 @@ def _websocket_connection(ws):
 
         if content_type == "authenticate":
             token = content["data"]
+            user = Session.find_session(token).user
+            socket = connected_socket.pop(user)
+            connected_socket[user] = token
+
+            if socket:
+                socket.close()
         else:
             pass
