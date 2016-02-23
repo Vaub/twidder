@@ -1,6 +1,9 @@
-import uuid
+import uuid, os
+
 import werkzeug.security as security
-from flask import Flask, json, request, escape, abort
+from geventwebsocket import WebSocketError
+from flask import Flask, json, request, escape, abort, send_from_directory
+from flask_sockets import Sockets
 
 import database_helper as db
 
@@ -8,12 +11,19 @@ SESSION_TOKEN = "X-Session-Token"
 
 COULD_NOT_POST_MESSAGE = "Could not post message."
 
-MIN_PASSWORD_LENGTH = 6
+CONFIG = {
+    "database": "database/database.db",
+    "database_schema": "database/database.schema",
+    "min_password_length": 6
+}
 
-DATABASE = "database.db"
-DATABASE_SCHEMA = "database.schema"
+STATIC_FOLDER = os.path.join("twidder", "static")
 
-app = Flask(__name__)
+app = Flask(__name__, static_url_path='', static_folder=STATIC_FOLDER)
+app.root_path = os.getcwd()
+
+sockets = Sockets(app)
+db.init_database(CONFIG["database"], CONFIG["database_schema"])
 
 
 class ApiError(Exception):
@@ -69,6 +79,14 @@ class Session(object):
         except (db.SessionDoesNotExistError, db.UserDoesNotExist, UserNotValidError):
             raise SessionNotValidError()
 
+    @staticmethod
+    def does_session_exist(token):
+        try:
+            Session.find_session(token)
+            return True
+        except SessionNotValidError:
+            return False
+
 
 class Post(object):
     def __init__(self, to_user, from_user, content, date_posted):
@@ -91,7 +109,7 @@ class User(object):
 
     def _validate(self):
         if not (self.email and self.password and self.first_name and self.family_name and
-                self.gender and self.city and self.country):
+                    self.gender and self.city and self.country):
             raise UserNotValidError()
 
         if not is_gender_valid(self.gender):
@@ -99,7 +117,7 @@ class User(object):
 
         if not is_password_valid(self.password):
             raise UserNotValidError("Password is not valid, use {min_char} characters minimum"
-                                    .format(min_chars=MIN_PASSWORD_LENGTH))
+                                    .format(min_chars=CONFIG["min_password_length"]))
 
     def check_password(self, password):
         return security.check_password_hash(self.password, password)
@@ -126,6 +144,13 @@ class User(object):
         if not db.persist_user(self.__dict__):
             raise Exception("User could not be persisted???")
 
+    def __eq__(self, other):
+        if isinstance(other, User):
+            return self.email == other.email
+
+    def __hash__(self):
+        return self.email.__hash__()
+
     @staticmethod
     def exists(email):
         try:
@@ -147,7 +172,7 @@ class User(object):
 
 
 def is_password_valid(password):
-    return password and len(password) >= MIN_PASSWORD_LENGTH
+    return password and len(password) >= CONFIG["min_password_length"]
 
 
 def is_gender_valid(gender):
@@ -169,12 +194,7 @@ def create_response(status_code, message, data):
 
 @app.before_request
 def before_request():
-    db.connect_db(DATABASE)
-
-
-@app.teardown_request
-def teardown_request(e):
-    db.close_db()
+    db.connect_db(CONFIG["database"])
 
 
 @app.route("/register", methods=["POST"])
@@ -306,6 +326,17 @@ def _is_post_message_data_valid(data):
         return False
 
 
+@app.route("/")
+def main():
+    path = os.path.join("client.html")
+    return app.send_static_file(path)
+
+
+@app.route("/<name>")
+def static_resources(name):
+    return send_from_directory(STATIC_FOLDER, name)
+
+
 @app.errorhandler(400)
 def bad_request(error):
     return create_response(400, error.message or "Your request is probably missing data.", [])
@@ -336,6 +367,47 @@ def generic_error(error):
     return create_response(error.status_code, error.message, [])
 
 
-if __name__ == "__main__":
-    db.init_database(DATABASE, DATABASE_SCHEMA)
-    app.run(debug=False)
+connected_socket = {}
+
+
+@sockets.route("/messages")
+def ws_messages(ws):
+    before_request()
+
+    try:
+        _websocket_connection(ws)
+    except WebSocketError as e:
+        print("Error in WS: {}".format(e))
+
+
+def _websocket_connection(ws):
+    token = None
+    while not ws.closed:
+        if token and not Session.does_session_exist(token):
+            ws.close()
+
+        message = ws.receive()
+        if not message:
+            continue
+
+        content = json.loads(message)
+        content_type = content["type"]
+
+        if content_type == "authenticate":
+            token = content["data"]
+            if not _authenticate_user(token, ws):
+                ws.close()
+        else:
+            pass
+
+
+def _authenticate_user(token, ws):
+    try:
+        user = Session.find_session(token).user
+    except SessionNotValidError:
+        print("Session {} did not exists".format(token))
+        return False
+
+    connected_socket.pop(user).close() if user in connected_socket else None
+    connected_socket[user] = ws
+    return True
