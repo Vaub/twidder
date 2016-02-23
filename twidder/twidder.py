@@ -328,13 +328,45 @@ def _is_post_message_data_valid(data):
 
 @app.route("/")
 def main():
-    path = os.path.join("client.html")
-    return app.send_static_file(path)
+    return app.send_static_file("client.html")
 
 
-@app.route("/<name>")
-def static_resources(name):
-    return send_from_directory(STATIC_FOLDER, name)
+@app.route("/templates/<filename>")
+def static_templates(filename):
+    folder = os.path.join(STATIC_FOLDER, "templates")
+    return send_from_directory(folder, filename)
+
+
+@app.route("/js/<filename>")
+def static_js(filename):
+    folder = os.path.join(STATIC_FOLDER, "js")
+    return send_from_directory(folder, filename)
+
+
+@app.route("/css/<filename>")
+def static_css(filename):
+    folder = os.path.join(STATIC_FOLDER, "css")
+    return send_from_directory(folder, filename)
+
+
+@app.route("/images/<filename>")
+def static_images(filename):
+    folder = os.path.join(STATIC_FOLDER, "images")
+    return send_from_directory(folder, filename)
+
+
+bower_components_path = [
+    "handlebars"
+]
+
+
+@app.route("/bower_components/<name>/<filename>")
+def static_bower(name, filename):
+    if name not in bower_components_path:
+        abort(404)
+
+    directory = os.path.join(STATIC_FOLDER, "bower_components", name)
+    return send_from_directory(directory, filename)
 
 
 @app.errorhandler(400)

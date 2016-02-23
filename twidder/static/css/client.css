@@ -52,7 +52,7 @@ abbr{
     height: 400px;
     float: left;
     margin-right: 10px;
-    background-image: url("wimage.png");
+    background-image: url("../images/wimage.png");
 }
 
 #login_form{

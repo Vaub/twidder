@@ -7,6 +7,8 @@ var session;
 var signedInView;
 var welcomeView;
 
+var welcomeTemplate;
+
 var minPasswordLength = 6;
 
 var ViewUtils = {
@@ -427,7 +429,7 @@ function WelcomeView(session) {
 
     return {
         displayView: function () {
-            ViewUtils.displayViewFromId("welcome_view", "current_view");
+            Handlebars.compile("templates/welcome.hbs");
             addEvents();
         }
     };
@@ -598,10 +600,25 @@ var displayView = function () {
     );
 };
 
+var compileTemplate = function(name) {
+
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", name, false);
+    xhr.send();
+
+    if (xhr.status != 200) {
+        throw "Impossible to load template, aborting!"
+    }
+
+    return Handlebars.precompile(xhr.response)
+};
+
 // "App" constructor
 window.onload = function () {
-    var messagesDefaultTimeout = 5000;
 
+    welcomeTemplate = compileTemplate("templates/welcome.hbs");
+
+    var messagesDefaultTimeout = 5000;
     messages = new Messages(messagesDefaultTimeout);
 
     server = new Server();
