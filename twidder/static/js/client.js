@@ -518,8 +518,6 @@ var initApp = function() {
     session = new Session(server, displayView);
     signedInView = new SignedInView(session);
     welcomeView = new WelcomeView(session);
-
-    displayView();
 };
 
 // "App" constructor
@@ -530,5 +528,11 @@ window.onload = function () {
         .add("login")
         .add("wall")
         .add("message")
-        .compile(initApp);
+        .compile(function() {
+            initApp();
+            page();
+        });
 };
+
+page('/', function() {
+});

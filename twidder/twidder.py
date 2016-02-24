@@ -356,7 +356,9 @@ def static_images(filename):
 
 
 bower_components_path = [
-    "handlebars"
+    "handlebars",
+    "bootstrap",
+    "page"
 ]
 
 
