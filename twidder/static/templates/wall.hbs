@@ -1,0 +1,41 @@
+<div class="wall_content">
+    <div class="title">
+        <h2>My posts</h2>
+        <div class="actions">
+            <button class="btn wall_refresh">Refresh</button>
+        </div>
+    </div>
+    <form class="wall_post_message post_message">
+        <textarea class="home_post_textarea" placeholder="What are your thoughts..."></textarea>
+        <input type="submit" class="btn" value="Send" />
+    </form>
+    <div class="home_wall">
+        {{# posts }}
+        <div class="post">
+            <div class="post_text">{{ content }}</div>
+            <div class="post_user">{{ from_user }}</div>
+        </div>
+        {{/ posts }}
+    </div>
+</div>
+<div class="wall_profile">
+    <h2>Profile</h2>
+    {{# profile }}
+    <div class="profile">
+        <div class="profile_title">Email</div>
+        <div class="profile_info profile_email" name="email">{{ email }}</div>
+
+        <div class="profile_title">Name</div>
+        <div class="profile_info profile_name" name="full_name">{{ first_name }} {{ family_name }}</div>
+
+        <div class="profile_title">Gender</div>
+        <div class="profile_info profile_gender" name="gender">{{ gender }}</div>
+
+        <div class="profile_title">City</div>
+        <div class="profile_info profile_city" name="city">{{ city }}</div>
+
+        <div class="profile_title">Country</div>
+        <div class="profile_info profile_country" name="country">{{ country }}</div>
+    </div>
+    {{/ profile }}
+</div>
