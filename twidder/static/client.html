@@ -1,8 +1,13 @@
 <!DOCTYPE html>
 <html>
 	<head>
-		<link href="css/client.css" type="text/css" rel="stylesheet" />
+		<link href="bower_components/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet" />
 
+		<link href="css/common.css" type="text/css" rel="stylesheet" />
+		<link href="css/welcome.css" type="text/css" rel="stylesheet" />
+
+		<script src="bower_components/jquery/dist/jquery.min.js" type="text/javascript"></script>
+		<script src="bower_components/bootstrap/dist/js/bootstrap.min.js" type="text/javascript"></script>
 		<script src="bower_components/handlebars/handlebars.min.js" type="text/javascript"></script>
 
 		<script src="js/common.js" type="text/javascript"></script>
@@ -10,11 +15,12 @@
 		<script src="js/templates.js" type="text/javascript"></script>
 		<script src="js/client.js" type="text/javascript"></script>
 
+		<meta name="viewport" content="width=device-width, initial-scale=1">
 	</head>
 	<body>
 		<div id="message_box">
 		</div>
-		<div id="current_view">
+		<div id="current_view" class="container-fluid">
 			Loading...
 		</div>
 	</body>

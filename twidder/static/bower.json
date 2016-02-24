@@ -18,6 +18,8 @@
     "tests"
   ],
   "dependencies": {
-    "handlebars": "^4.0.5"
+    "handlebars": "^4.0.5",
+    "pure": "^0.6.0",
+    "bootstrap": "^3.3.6"
   }
 }

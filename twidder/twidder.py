@@ -355,20 +355,6 @@ def static_images(filename):
     return send_from_directory(folder, filename)
 
 
-bower_components_path = [
-    "handlebars"
-]
-
-
-@app.route("/bower_components/<name>/<filename>")
-def static_bower(name, filename):
-    if name not in bower_components_path:
-        abort(404)
-
-    directory = os.path.join(STATIC_FOLDER, "bower_components", name)
-    return send_from_directory(directory, filename)
-
-
 @app.errorhandler(400)
 def bad_request(error):
     return create_response(400, error.message or "Your request is probably missing data.", [])

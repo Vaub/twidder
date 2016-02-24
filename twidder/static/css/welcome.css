@@ -1,0 +1,13 @@
+#welcome {
+    margin: auto;
+    padding: 10px;
+}
+
+.welcome-section form {
+    padding: 20px 20px 10px;
+    background: white;
+
+    -webkit-border-radius: 10px;
+    -moz-border-radius: 10px;
+    border-radius: 10px;
+}
