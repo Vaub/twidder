@@ -1,0 +1,45 @@
+<header>
+    <div class="menu">
+        <div class="menu_title">
+            Twidder
+        </div>
+        <div class="menu_tab selected" rel="home"><span>Home</span></div>
+        <div class="menu_tab" rel="browse"><span>Browse</span></div>
+        <div class="menu_tab" rel="account"><span>Account</span></div>
+    </div>
+</header>
+<section>
+    <div id="home" class="panel">
+        <h1>Home</h1>
+        <div id="home_view_container">
+        </div>
+    </div>
+    <div id="browse" class="panel hidden">
+        <h1>Browse</h1>
+        <form id="search_form">
+            <input type="email" name="otherUsername" required />
+            <input type="submit" class="btn" value="Search">
+        </form>
+        <div id="browse_view_container">
+        </div>
+    </div>
+    <div id="account" class="panel hidden">
+        <h1>Account</h1>
+        <div>
+            <h2>Change password</h2>
+            <form id="change_password" action="#" method="post">
+                <div>
+                    <label for="old_password">Old password</label>
+                    <input type="password" name="oldPassword" id="old_password" />
+                </div>
+                <div>
+                    <label for="new_password">New password</label>
+                    <input type="password" name="newPassword" id="new_password" />
+                </div>
+                <input type="submit" class="btn" value="Change password" />
+            </form>
+        </div>
+        <button id="sign_out" class="btn">Sign out</button>
+    </div>
+</section>
+<footer>Twidder &copy; 2016-.</footer>
