@@ -357,7 +357,7 @@ def static_images(filename):
 
 bower_components_path = [
     "handlebars",
-    "d3"
+    "Chart.js"
 ]
 
 
@@ -419,7 +419,12 @@ def _websocket_connection(ws):
         if token and not Session.does_session_exist(token):
             ws.close()
 
-        message = ws.receive()
+        message = None
+        try:
+            message = ws.receive()
+        except WebSocketError:
+            continue
+
         if not message:
             continue
 
@@ -430,8 +435,12 @@ def _websocket_connection(ws):
             token = content["data"]
             if not _authenticate_user(token, ws):
                 ws.close()
+            send_statistics()
         else:
             pass
+
+    connected_socket.pop(token, None)
+    send_statistics()
 
 
 def _authenticate_user(token, ws):
@@ -444,3 +453,12 @@ def _authenticate_user(token, ws):
     connected_socket.pop(user).close() if user in connected_socket else None
     connected_socket[user] = ws
     return True
+
+
+def send_statistics():
+    statistic = {
+        "nb_connected_users":len(connected_socket)
+    }
+
+    for k in connected_socket:
+        connected_socket[k].send(json.dumps({"type": "statistics", "data": statistic}))

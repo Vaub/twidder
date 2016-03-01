@@ -362,6 +362,8 @@ function Session(server, notifySessionChange) {
     function createChannel() {
         channel = new WebsocketChannel(sessionToken, function() {
             signOutFromServer();
+        }, function(stats){
+            console.log(stats);
         });
     }
 
@@ -531,4 +533,6 @@ window.onload = function () {
         .add("wall")
         .add("message")
         .compile(initApp);
+
+    donutChart(document.getElementById("donut_chart"));
 };
