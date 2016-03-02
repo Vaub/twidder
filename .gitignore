@@ -1,5 +1,8 @@
 *.db
 
+# bower
+bower_components/
+
 # Vim
 *.swp
 

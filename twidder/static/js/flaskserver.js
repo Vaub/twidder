@@ -10,6 +10,8 @@ function XhrSender(xhr, content) {
     var onSuccessCallback = noCallback,
         onErrorCallback = noCallback;
 
+    var isText = false;
+
     function isStatusValid(status) {
         return status >= 200 && status < 400;
     }
@@ -20,7 +22,7 @@ function XhrSender(xhr, content) {
                 return;
             }
 
-            var response = JSON.parse(xhr.response);
+            var response = isText ? xhr.response : JSON.parse(xhr.response);
             isStatusValid(xhr.status) ?
                 onSuccessCallback(response) :
                 onErrorCallback(response);
@@ -47,6 +49,11 @@ function XhrSender(xhr, content) {
             if (callback) {
                 onErrorCallback = callback;
             }
+            return this;
+        },
+
+        asText: function() {
+            isText = true;
             return this;
         },
 
@@ -89,7 +96,7 @@ function WebsocketChannel(sessionToken, onClose, endpoint) {
 
 function Server(endpoint) {
 
-    endpoint = (endpoint || (location.protocol + "//" + location.host));
+    endpoint = (endpoint || (location.protocol + "//" + location.host + "/api"));
 
     function encodeJsonXhr(xhr, data) {
         xhr.setRequestHeader("Content-Type", "application/json");

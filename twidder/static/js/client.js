@@ -7,83 +7,14 @@ var session;
 var signedInView;
 var welcomeView;
 
-var minPasswordLength = 6;
+var templates;
 
-var ViewUtils = {
-    isElementAView: function (element) {
-        return (element instanceof HTMLElement) &&
-            (element.getAttribute("type") === "text/view");
-    },
-
-    displayViewFromId: function (toDisplayId, viewContainerId) {
-        var view = document.getElementById(viewContainerId);
-        var viewToDisplay = document.getElementById(toDisplayId);
-
-        if (!this.isElementAView(viewToDisplay)) {
-            return false;
-        }
-
-        view.innerHTML = viewToDisplay.innerHTML;
-    },
-
-    // Use the view to create a <div> encapsulating an element.
-    // Can optionally give it a class
-    createElementFromView: function(viewId, withClass) {
-        var view = document.getElementById(viewId);
-        var element = document.createElement("div");
-
-        element.innerHTML = view.innerHTML;
-        if (withClass && typeof(withClass) === "string") {
-            Utils.addClass(element, withClass);
-        }
-
-        return element;
-    }
-};
-
-// Various utilities methods
-var Utils = {
-    // Add a class to an HTMLElement
-    addClass: function (element, classToAdd) {
-        if (!(element instanceof HTMLElement) || element.classList.contains(classToAdd)) {
-            return false;
-        }
-        element.classList.add(classToAdd);
-    },
-
-    // Remove a class from an HTMLElement
-    removeClass: function (element, classToRemove) {
-        if (!(element instanceof HTMLElement) || !element.classList.contains(classToRemove)) {
-            return false;
-        }
-        element.classList.remove(classToRemove);
-    },
-
-    // Remove all child from an HTMLElement
-    removeAllChild: function(element) {
-        if (!(element instanceof HTMLElement)) {
-            return false;
-        }
-
-        while (element.firstChild) {
-            element.removeChild(element.firstChild);
-        }
-    },
-
-    isPasswordLengthValid: function(password){
-        return (typeof(password) === "string" && password.length >= minPasswordLength);
-    }
-};
+var twidder;
 
 // Creates messages (alerts) for the website no matter the view
 function Messages(messageTimeout) {
 
     var messageBox = document.getElementById("message_box");
-    var messageView = document.getElementById("message_view");
-
-    var messageDOM = document.createElement("div");
-    messageDOM.innerHTML = messageView.innerHTML;
-    messageDOM = messageDOM.getElementsByClassName("message")[0];
 
     function closeMessage(message) {
         if (messageBox.contains(message)) {
@@ -98,17 +29,18 @@ function Messages(messageTimeout) {
     }
 
     function createNewMessage(text) {
-        var message = messageDOM.cloneNode(true);
-        var textNode = message.getElementsByClassName("message_text")[0];
-        var closeNode = message.getElementsByClassName("message_close")[0];
+        var template = templates.use("message", { text: text });
+        var element = Utils.createElement(template, "message");
+        Utils.addClass(element, "hidden");
 
-        messageBox.appendChild(message);
-        textNode.innerHTML = text;
+        var closeNode = element.getElementsByClassName("message_close")[0];
+
+        messageBox.appendChild(element);
         closeNode.onclick = function () {
-            closeMessage(message)
+            closeMessage(element)
         };
 
-        return message;
+        return element;
     }
 
     return {
@@ -141,43 +73,21 @@ function Messages(messageTimeout) {
 
 function Wall(getProfileFunction, getMessagesFunction, postMessageFunction) {
 
-    var wallNode = ViewUtils.createElementFromView("template_home_view");
-    var postNode = ViewUtils.createElementFromView("post_view", "post");
+    var posts = [];
+    var profile;
 
-    var wall = wallNode.getElementsByClassName("home_wall")[0];
-    var profile = wallNode.getElementsByClassName("profile")[0];
-    var postText = wallNode.getElementsByClassName("home_post_textarea")[0];
+    var wallNode = Utils.createElement("", "wall_container");
 
-    function populateProfile(data) {
-        var profile = wallNode.getElementsByClassName("profile")[0];
-
-        profile.getElementsByClassName("profile_email")[0].innerText = data.email;
-        profile.getElementsByClassName("profile_name")[0].innerText = data.first_name +" "+ data.family_name;
-        profile.getElementsByClassName("profile_gender")[0].innerText = (data.gender === "m") ? "Male" : "Female";
-        profile.getElementsByClassName("profile_city")[0].innerText = data.city;
-        profile.getElementsByClassName("profile_country")[0].innerText = data.country;
-    }
-
-    function fillWall(data) {
-        var newWall = document.createElement("div");
-        newWall.classList.add("post_wall");
-
-        var posts = data || [];
-        Array.prototype.forEach.call(posts, function(post) {
-            var newPostNode = postNode.cloneNode(true);
-            newPostNode.getElementsByClassName("post_text")[0].innerText = post.content;
-            newPostNode.getElementsByClassName("post_user")[0].innerText = "by "+ post.from_user;
-            newWall.appendChild(newPostNode);
-        });
-
-        Utils.removeAllChild(wall);
-        wall.appendChild(newWall);
+    function refreshView() {
+        wallNode.innerHTML = templates.use("wall", { posts: posts, profile: profile });
+        createHandlers();
     }
 
     function refreshWall() {
         getMessagesFunction(
             function(response) {
-                fillWall(response.data);
+                posts = response.data;
+                refreshView();
             },
             function(response) {
                 messages.newError(response.message);
@@ -200,6 +110,7 @@ function Wall(getProfileFunction, getMessagesFunction, postMessageFunction) {
     function createHandlers() {
         var postForm = wallNode.getElementsByClassName("wall_post_message")[0];
         var refreshButton = wallNode.getElementsByClassName("wall_refresh")[0];
+        var postText = wallNode.getElementsByClassName("home_post_textarea")[0];
 
         postForm.onsubmit = function() {
             if (postText.value) {
@@ -218,12 +129,13 @@ function Wall(getProfileFunction, getMessagesFunction, postMessageFunction) {
 
     function init() {
         var messagesResponse = getMessagesFunction(function(response) {
-            fillWall(response.data);
+            posts = response.data || [];
+            refreshView();
         });
         var profileResponse = getProfileFunction(function(response) {
-            populateProfile(response.data);
+            profile = response.data;
+            refreshView();
         });
-        createHandlers();
     }
 
     init();
@@ -238,28 +150,23 @@ function Wall(getProfileFunction, getMessagesFunction, postMessageFunction) {
 // SignedInView state
 function SignedInView(session) {
 
-    function displayTab(currentTabId, selectedTabId){
-        var currentTab = document.getElementById(currentTabId);
-        var selectedTab = document.getElementById(selectedTabId);
+    var template = templates.use("login");
 
-        Utils.addClass(currentTab, "hidden");
-        Utils.removeClass(selectedTab, "hidden");
-    }
+    function displayTab(name){
+        var tabs = [].slice.call(document.getElementsByClassName("menu_tab"));
 
-    function createTabEvents() {
-        var tabs = document.getElementsByClassName("menu_tab");
+        tabs.forEach(function(tab) {
+            var toDisplayId = tab.getAttribute("rel");
+            var element = document.getElementById(toDisplayId);
 
-        Array.prototype.forEach.call(tabs, function (tab) {
-            tab.onclick = function () {
-                var currentTab = document.getElementsByClassName("selected")[0];
-                var currentTabId = currentTab.getAttribute("rel");
-                var selectedTabId = tab.getAttribute("rel");
+            if (toDisplayId !== name) {
+                Utils.removeClass(tab, "selected");
+                Utils.addClass(element, "hidden");
+                return;
+            }
 
-                Utils.removeClass(currentTab, "selected");
-                Utils.addClass(tab, "selected");
-
-                displayTab(currentTabId, selectedTabId);
-            };
+            Utils.addClass(tab, "selected");
+            Utils.removeClass(element, "hidden");
         });
     }
 
@@ -312,33 +219,34 @@ function SignedInView(session) {
     }
 
     function createBrowseTab() {
-        var browseViewContainer = document.getElementById("browse_view_container");
         var searchForm = document.getElementById("search_form");
-
         searchForm.onsubmit = function(){
-            var email = searchForm.otherUsername.value;
-
-            var successCallback = function(response) {
-                var getBrowseProfile = function(s, e) { session.getOtherUserDataByEmail(email, s, e); };
-                var getBrowseMessages = function(s, e) { session.getOtherUserMessagesByEmail(email, s, e); };
-                var postBrowseMessage = function(message, s, e) { session.postMessage(message, email, s, e); };
-
-                var browseWall = new Wall(getBrowseProfile, getBrowseMessages, postBrowseMessage);
-                Utils.removeAllChild(browseViewContainer);
-                browseViewContainer.appendChild(browseWall.element);
-
-            };
-            var errorCallback = function(response) {
-                messages.newError(response.message);
-            };
-
-            session.getOtherUserDataByEmail(email, successCallback, errorCallback);
+            page("/browse/" + searchForm.otherUsername.value);
             return false;
         };
     }
 
+    function displayUser(email) {
+        var browseViewContainer = document.getElementById("browse_view_container");
+
+        var successCallback = function(response) {
+            var getBrowseProfile = function(s, e) { session.getOtherUserDataByEmail(email, s, e); };
+            var getBrowseMessages = function(s, e) { session.getOtherUserMessagesByEmail(email, s, e); };
+            var postBrowseMessage = function(message, s, e) { session.postMessage(message, email, s, e); };
+
+            var browseWall = new Wall(getBrowseProfile, getBrowseMessages, postBrowseMessage);
+            Utils.removeAllChild(browseViewContainer);
+            browseViewContainer.appendChild(browseWall.element);
+        };
+        var errorCallback = function(response) {
+            messages.newError(response.message);
+        };
+
+        session.getOtherUserDataByEmail(email, successCallback, errorCallback);
+        return false;
+    }
+
     function initializeView() {
-        createTabEvents();
         createAccountTabEvents();
         createHomeTab();
         createBrowseTab();
@@ -346,8 +254,28 @@ function SignedInView(session) {
 
     return {
         displayView: function () {
-            ViewUtils.displayViewFromId("login_view", "current_view");
+            document.getElementById("current_view").innerHTML = template;
+
             initializeView();
+        },
+
+        displayHome: function() {
+            displayTab("home");
+        },
+
+        displayUser: function(email) {
+            displayTab("browse");
+            if (email) {
+                displayUser(email);
+            }
+        },
+
+        displayAccount: function() {
+            displayTab("account");
+        },
+
+        name: function() {
+            return "signedInView";
         }
     }
 }
@@ -427,8 +355,12 @@ function WelcomeView(session) {
 
     return {
         displayView: function () {
-            ViewUtils.displayViewFromId("welcome_view", "current_view");
+            document.getElementById("current_view").innerHTML = templates.use("welcome");
             addEvents();
+        },
+
+        name: function() {
+            return "welcomeView";
         }
     };
 }
@@ -590,18 +522,11 @@ function Session(server, notifySessionChange) {
 
 // Main "refresh" of the website
 var displayView = function () {
-    session.isSignedIn(
-        function() {
-            signedInView.displayView(); },
-        function() {
-            welcomeView.displayView(); }
-    );
+    page("/");
 };
 
-// "App" constructor
-window.onload = function () {
+var initApp = function() {
     var messagesDefaultTimeout = 5000;
-
     messages = new Messages(messagesDefaultTimeout);
 
     server = new Server();
@@ -609,5 +534,19 @@ window.onload = function () {
     signedInView = new SignedInView(session);
     welcomeView = new WelcomeView(session);
 
-    displayView();
+    twidder = new Twidder(session, welcomeView, signedInView);
+    twidder.start();
+};
+
+// "App" constructor
+window.onload = function () {
+    templates = new Templates();
+    templates
+        .add("welcome")
+        .add("login")
+        .add("wall")
+        .add("message")
+        .compile(function() {
+            initApp();
+        });
 };

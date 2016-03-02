@@ -52,7 +52,7 @@ abbr{
     height: 400px;
     float: left;
     margin-right: 10px;
-    background-image: url("wimage.png");
+    background-image: url("../images/wimage.png");
 }
 
 #login_form{
@@ -183,6 +183,11 @@ footer {
 
 .menu_tab span {
     border-bottom: 3px solid transparent;
+}
+
+.menu_tab {
+    color: black;
+    text-decoration: none;
 }
 
 .menu_tab:hover {
