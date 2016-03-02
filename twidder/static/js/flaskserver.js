@@ -96,7 +96,7 @@ function WebsocketChannel(sessionToken, onClose, endpoint) {
 
 function Server(endpoint) {
 
-    endpoint = (endpoint || (location.protocol + "//" + location.host));
+    endpoint = (endpoint || (location.protocol + "//" + location.host + "/api"));
 
     function encodeJsonXhr(xhr, data) {
         xhr.setRequestHeader("Content-Type", "application/json");
