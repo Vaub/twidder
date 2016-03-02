@@ -251,11 +251,17 @@ function SignedInView(session) {
         };
     }
 
+    function createChart(){
+        var chartViewContainer = document.getElementById("chart_view_container");
+        chart = new DonutChart(chartViewContainer);
+    }
+
     function initializeView() {
         createTabEvents();
         createAccountTabEvents();
         createHomeTab();
         createBrowseTab();
+        createChart();
     }
 
     return {
@@ -364,9 +370,8 @@ function Session(server, notifySessionChange) {
     function createChannel() {
         channel = new WebsocketChannel(sessionToken, function() {
             signOutFromServer();
-        }, function(stats){
-            console.log(stats);
-            chart.update(stats);
+        }, function(statistics){
+            chart.update(statistics);
         });
     }
 
@@ -523,8 +528,6 @@ var initApp = function() {
     session = new Session(server, displayView);
     signedInView = new SignedInView(session);
     welcomeView = new WelcomeView(session);
-
-    chart = new DonutChart(document.getElementById("donut_chart"));
 
     displayView();
 };
