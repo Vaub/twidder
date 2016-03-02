@@ -1,5 +1,7 @@
 'use strict';
 
+var chart;
+
 var messages;
 
 var server;
@@ -364,6 +366,7 @@ function Session(server, notifySessionChange) {
             signOutFromServer();
         }, function(stats){
             console.log(stats);
+            chart.update(stats);
         });
     }
 
@@ -521,6 +524,8 @@ var initApp = function() {
     signedInView = new SignedInView(session);
     welcomeView = new WelcomeView(session);
 
+    chart = new DonutChart(document.getElementById("donut_chart"));
+
     displayView();
 };
 
@@ -533,6 +538,4 @@ window.onload = function () {
         .add("wall")
         .add("message")
         .compile(initApp);
-
-    donutChart(document.getElementById("donut_chart"));
 };

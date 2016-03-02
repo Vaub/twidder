@@ -1,35 +1,69 @@
 'use strict';
 
-function donutChart(element){
-    //A changer
-    var data = [
-       {
-            value: 61,
-            color: "#09355C",
-            label: "Label 1"
-        }, {
-            value: 11,
-            color: "#CBCBCB",
-            label: "Label 2"
-        }, {
-            value: 28,
-            color: "#B61B12",
-            label: "Label 3"
-        }
-    ];
+var donutChart;
+var legend;
 
+function DonutChart(element){
     var options = {
         segmentShowStroke: false,
         animateRotate: true,
         animateScale: false,
         percentageInnerCutout: 50,
-        tooltipTemplate: "<%= value %>%", //Attention a value, a changer au besoins
+        tooltipTemplate: "<%= value %>",
         responsive: true,
         maintainAspectRatio: true
     };
 
     var context = element.getElementsByClassName("chart_canvas")[0].getContext('2d');
-    var donutChart = new Chart(context).Doughnut(data, options);
 
-    element.getElementsByClassName("chart_legend")[0].innerHTML = donutChart.generateLegend();
+    donutChart = new Chart(context).Doughnut([], options);
+    legend = element.getElementsByClassName("chart_legend")[0];
+
+    return {
+        update:function(data){
+            updateChart(data);
+            legend.innerHTML = donutChart.generateLegend();
+        }
+    }
 }
+
+function updateChart(data){
+    var convertedData = convertData(data);
+
+    convertedData.forEach(function(d, index){
+        if (!donutChart.segments.length){
+            donutChart.addData(d)
+        } else{
+            donutChart.segments[index].value = d.value;
+        }
+    });
+
+    donutChart.update();
+}
+
+function convertData(data){
+    var colors = ["#09355C", "#CBCBCB", "#B61B12"]
+    var chartData = [];
+
+    var findName = function(name){
+        return {
+            nb_connected_users:"Number of connected user"
+        }[name] || name
+    };
+
+    Object.keys(data)
+        .filter(function(d) { return data.hasOwnProperty(d) })
+        .forEach( function(d, index){
+
+            var convertedData = {
+                label: findName(d),
+                color: colors[index%(colors.length-1)],
+                value: data[d]
+            };
+
+            chartData.push(convertedData);
+        });
+
+    return chartData;
+}
+
