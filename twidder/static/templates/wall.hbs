@@ -6,13 +6,31 @@
         </div>
     </div>
     <form class="wall_post_message post_message">
-        <textarea class="home_post_textarea" placeholder="What are your thoughts..."></textarea>
+        <textarea class="home_post_textarea" name="message" placeholder="What are your thoughts..."></textarea>
         <input type="submit" class="btn" value="Send" />
+        <input type="file" name="media" />
     </form>
     <div class="home_wall">
         {{# posts }}
         <div class="post">
             <div class="post_text">{{ content }}</div>
+            <div class="post_media">
+                {{#if image}}
+                <img src="/media/{{ image }}" />
+                {{/if}}
+                {{#if video}}
+                <video controls>
+                    <source src="/media/{{ video }}" type="video/{{ format }}" />
+                    Your browser doesn't support this video.
+                </video>
+                {{/if}}
+                {{#if audio}}
+                <audio controls>
+                    <source src="/media/{{ audio }}" type="audio/{{ format }}" />
+                    Your browser doesn't support this audio.
+                </audio>
+                {{/if}}
+            </div>
             <div class="post_user">{{ from_user }}</div>
         </div>
         {{/ posts }}
