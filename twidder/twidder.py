@@ -438,6 +438,12 @@ def default_dump(error):
     return app.send_static_file("client.html")
 
 
+@app.errorhandler(500)
+def internal_error(error):
+    print("Internal error:\n{}\n".format(error.message or "Unknown"))
+    return create_response(500, "Internal server error.", [])
+
+
 @app.errorhandler(UserNotValidError)
 def user_not_valid(error):
     return create_response(400, error.message, [])
