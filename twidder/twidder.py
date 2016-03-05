@@ -87,6 +87,14 @@ class Session(object):
         except SessionNotValidError:
             return False
 
+    @staticmethod
+    def get_user(token):
+        try:
+            return Session.find_session(token).user
+        except SessionNotValidError:
+            print("Session {} did not exists".format(token))
+            return False
+
 
 class Post(object):
     def __init__(self, to_user, from_user, content, date_posted):
@@ -125,6 +133,9 @@ class User(object):
     def get_messages(self):
         messages = db.select_messages(self.email)
         return [Post(**m) for m in messages]
+
+    def get_number_of_messages(self):
+        return len(self.get_messages())
 
     def post_message(self, to_user_email, message):
         if not (to_user_email and message):
@@ -446,26 +457,33 @@ def _websocket_connection(ws):
         else:
             pass
 
-    connected_socket.pop(token, None)
+    pop_user(token)
     send_statistics()
 
 
 def _authenticate_user(token, ws):
-    try:
-        user = Session.find_session(token).user
-    except SessionNotValidError:
-        print("Session {} did not exists".format(token))
+    user = pop_user(token)
+    if not user:
         return False
 
-    connected_socket.pop(user).close() if user in connected_socket else None
     connected_socket[user] = ws
     return True
 
 
+def pop_user(token):
+    user = Session.get_user(token)
+    if not user:
+        return False
+
+    connected_socket.pop(user).close() if user in connected_socket else None
+    return user
+
+
 def send_statistics():
     statistic = {
-        "nb_connected_users":len(connected_socket)
+        "nb_connected_users": len(connected_socket)
     }
 
     for k in connected_socket:
+        statistic["nb_posts"] = k.get_number_of_messages()
         connected_socket[k].send(json.dumps({"type": "statistics", "data": statistic}))

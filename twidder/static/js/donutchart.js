@@ -21,6 +21,7 @@ function DonutChart(element){
 
     return {
         update:function(data){
+            donutChart.clear();
             updateChart(data);
             legend.innerHTML = donutChart.generateLegend();
         }
@@ -29,9 +30,14 @@ function DonutChart(element){
 
 function updateChart(data){
     var convertedData = convertData(data);
+    var chartLabels = [];
+
+    donutChart.segments.forEach(function(segment){
+        chartLabels.push(segment.label);
+    });
 
     convertedData.forEach(function(d, index){
-        if (!donutChart.segments.length){
+        if (chartLabels.indexOf(d.label) == (-1)){
             donutChart.addData(d)
         } else{
             donutChart.segments[index].value = d.value;
@@ -47,7 +53,8 @@ function convertData(data){
 
     var findName = function(name){
         return {
-            nb_connected_users:"Number of connected user"
+            nb_connected_users:"Number of connected user",
+            nb_posts:"Number of posts"
         }[name] || name
     };
 
@@ -66,4 +73,3 @@ function convertData(data){
 
     return chartData;
 }
-
