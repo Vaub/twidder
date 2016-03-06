@@ -30,3 +30,11 @@ CREATE TABLE IF NOT EXISTS sessions(
   PRIMARY KEY (user, token),
   FOREIGN KEY (user) REFERENCES users(email)
 );
+
+CREATE TABLE IF NOT EXISTS page_views(
+  user TEXT UNIQUE NOT NULL,
+  number_views INTEGER DEFAULT 0,
+
+  PRIMARY KEY (user, number_views),
+  FOREIGN KEY (user) REFERENCES users(email)
+);

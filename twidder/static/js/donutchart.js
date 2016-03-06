@@ -54,7 +54,8 @@ function convertData(data){
     var findName = function(name){
         return {
             nb_connected_users:"Number of connected user",
-            nb_posts:"Number of posts"
+            nb_posts:"Number of posts",
+            nb_views:"Number of views"
         }[name] || name
     };
 
@@ -64,7 +65,7 @@ function convertData(data){
 
             var convertedData = {
                 label: findName(d),
-                color: colors[index%(colors.length-1)],
+                color: colors[index%(colors.length)],
                 value: data[d]
             };
 

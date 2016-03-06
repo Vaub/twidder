@@ -137,6 +137,8 @@ function Wall(getProfileFunction, getMessagesFunction, postMessageFunction) {
         var profileResponse = getProfileFunction(function(response) {
             profile = response.data;
             refreshView();
+        }, function(response){
+            messages.newError("User does not exists.");
         });
     }
 
@@ -231,20 +233,14 @@ function SignedInView(session) {
     function displayUser(email) {
         var browseViewContainer = document.getElementById("browse_view_container");
 
-        var successCallback = function(response) {
-            var getBrowseProfile = function(s, e) { session.getOtherUserDataByEmail(email, s, e); };
-            var getBrowseMessages = function(s, e) { session.getOtherUserMessagesByEmail(email, s, e); };
-            var postBrowseMessage = function(message, s, e) { session.postMessage(message, email, s, e); };
+        var getBrowseProfile = function(s, e) { session.getOtherUserDataByEmail(email, s, e); };
+        var getBrowseMessages = function(s, e) { session.getOtherUserMessagesByEmail(email, s, e); };
+        var postBrowseMessage = function(message, s, e) { session.postMessage(message, email, s, e); };
 
-            var browseWall = new Wall(getBrowseProfile, getBrowseMessages, postBrowseMessage);
-            Utils.removeAllChild(browseViewContainer);
-            browseViewContainer.appendChild(browseWall.element);
-        };
-        var errorCallback = function(response) {
-            messages.newError(response.message);
-        };
+        var browseWall = new Wall(getBrowseProfile, getBrowseMessages, postBrowseMessage);
+        Utils.removeAllChild(browseViewContainer);
+        browseViewContainer.appendChild(browseWall.element);
 
-        session.getOtherUserDataByEmail(email, successCallback, errorCallback);
         return false;
     }
 

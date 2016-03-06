@@ -155,6 +155,12 @@ class User(object):
         if not db.persist_user(self.__dict__):
             raise Exception("User could not be persisted???")
 
+    def get_number_views(self):
+        return db.select_page_views(self.email)
+
+    def update_number_views(self):
+        db.persist_page_views(self.email)
+
     def __eq__(self, other):
         if isinstance(other, User):
             return self.email == other.email
@@ -295,6 +301,9 @@ def get_user_data_by_email(email):
     identify_session()
     other_user = User.find_user(email)
 
+    other_user.update_number_views()
+    send_statistics()
+
     return create_response(200, "Data successfully retrieved.", _create_user_info(other_user))
 
 
@@ -327,6 +336,8 @@ def post_message(to_user_email):
         abort(400)
 
     user.post_message(to_user_email, escape(data["message"]))
+    send_statistics()
+
     return create_response(200, "Message successfully posted.", [])
 
 
@@ -486,4 +497,5 @@ def send_statistics():
 
     for k in connected_socket:
         statistic["nb_posts"] = k.get_number_of_messages()
+        statistic["nb_views"] = k.get_number_views()
         connected_socket[k].send(json.dumps({"type": "statistics", "data": statistic}))

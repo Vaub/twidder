@@ -33,6 +33,12 @@ SELECT_MESSAGES = "SELECT * FROM posts WHERE to_user = ? ORDER BY date_posted DE
 
 INSERT_MESSAGE = "INSERT INTO posts(to_user, from_user, content) VALUES (?, ?, ?)"
 
+SELECT_PAGE_VIEWS = "SELECT * FROM page_views WHERE user = ?"
+
+INSERT_PAGE_VIEWS = "INSERT OR IGNORE INTO page_views(user) VALUES (?)"
+
+UPDATE_PAGE_VIEWS = "UPDATE page_views SET number_views = number_views+1 WHERE user = ?"
+
 
 class UserDoesNotExist(Exception):
     def __init__(self): pass
@@ -163,3 +169,26 @@ def insert_message(to_user_email, from_user_email, message):
         conn.commit()
     except sqlite3.Error:
         raise CouldNotInsertMessage()
+
+
+class CouldNotFindPageView(Exception):
+    pass
+
+
+def select_page_views(email):
+    conn = g.db
+    try:
+        number_of_views = conn.execute(SELECT_PAGE_VIEWS, (email,)).fetchone()
+        return number_of_views["number_views"] if number_of_views else 0
+    except sqlite3.Error:
+        raise CouldNotFindPageView()
+
+
+def persist_page_views(email):
+    conn = g.db
+    try:
+        conn.execute(INSERT_PAGE_VIEWS, (email,))
+        conn.execute(UPDATE_PAGE_VIEWS, (email,))
+        conn.commit()
+    except sqlite3.Error:
+        raise CouldNotFindPageView()
