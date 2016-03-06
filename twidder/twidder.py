@@ -1,10 +1,12 @@
-import uuid, os
+import os
+import uuid
 
 import werkzeug.security as security
+from flask import json, request, escape, abort, send_from_directory, render_template
 from geventwebsocket import WebSocketError
-from flask import Flask, json, request, escape, abort, send_from_directory
-from flask_sockets import Sockets
 
+from . import app, sockets, STATIC_FOLDER
+from security import validate_request, CouldNotValidateRequestError
 import database_helper as db
 
 SESSION_TOKEN = "X-Session-Token"
@@ -17,12 +19,6 @@ CONFIG = {
     "min_password_length": 6
 }
 
-STATIC_FOLDER = os.path.join("twidder", "static")
-
-app = Flask(__name__, static_url_path='', static_folder=STATIC_FOLDER)
-app.root_path = os.getcwd()
-
-sockets = Sockets(app)
 db.init_database(CONFIG["database"], CONFIG["database_schema"])
 
 
@@ -252,6 +248,7 @@ def logout():
 
 
 @app.route("/changePassword", methods=["PUT"])
+@validate_request
 def change_password():
     user = identify_session().user
     data = request.get_json()
@@ -328,7 +325,7 @@ def _is_post_message_data_valid(data):
 
 @app.route("/")
 def main():
-    return app.send_static_file("client.html")
+    return render_template("client.html", client_secret=app.config["SECRET_KEY"])
 
 
 @app.route("/templates/<filename>")
@@ -372,6 +369,11 @@ def static_bower(name, filename):
 @app.errorhandler(400)
 def bad_request(error):
     return create_response(400, error.message or "Your request is probably missing data.", [])
+
+
+@app.errorhandler(CouldNotValidateRequestError)
+def could_not_validate_request(error):
+    return create_response(401, "Could not validate the request.", [])
 
 
 @app.errorhandler(UserNotValidError)
