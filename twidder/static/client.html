@@ -1,166 +1,19 @@
 <!DOCTYPE html>
 <html>
 	<head>
-		<link href="client.css" type="text/css" rel="stylesheet" />
+		<link href="/css/client.css" type="text/css" rel="stylesheet" />
 
-		<script src="common.js" type="text/javascript"></script>
-		<script src="flaskserver.js" type="text/javascript"></script>
-		<script src="client.js" type="text/javascript"></script>
+		<script src="/bower_components/handlebars/handlebars.min.js" type="text/javascript"></script>
+		<script src="/bower_components/page/page.js" type="text/javascript"></script>
+		<script src="/bower_components/Chart.js/Chart.min.js" type="text/javascript"></script>
 
+		<script src="/js/common.js" type="text/javascript"></script>
+		<script src="/js/flaskserver.js" type="text/javascript"></script>
+		<script src="/js/templates.js" type="text/javascript"></script>
+		<script src="/js/donutchart.js" type="text/javascript"></script>
+		<script src="/js/router.js" type="text/javascript"></script>
+		<script src="/js/client.js" type="text/javascript"></script>
 
-		<script id="welcome_view" type="text/view">
-			<div id="logo_slogan" class="welcome_section">
-			</div>
-			<div id="login_form" class="welcome_section">
-				<form id="login" action="">
-					<div>
-						<label for="user_email">Email</label>
-						<input type="email" name="user_email" id="user_email" required>
-					</div>
-					<div>
-						<label for="user_password">Password</label>
-						<input type="password" name="user_password" id="user_password" required>
-					</div>
-					<input type="submit" class="btn" value="Login">
-				</form>
-			</div>
-			<div id="signup_form" class="welcome_section">
-				<h2>Sign up here</h2>
-				<form id="signup" action="">
-					<div>
-						<label>First name</label>
-						<input type="text" name="first_name" required>
-					</div>
-					<div>
-						<label>Family name</label>
-						<input type="text" name="family_name" required>
-					</div>
-					<div>
-						<label>Gender</label>
-						<select name="gender" required>
-							<option value="m" selected="selected">Male</option>
-							<option value="f">Female</option>
-						</select>
-					</div>
-					<div>
-						<label>City</label>
-						<input type="text" name="city" required>
-					</div>
-					<div>
-						<label>Country</label>
-						<input type="text" name="country" required>
-					</div>
-					<div>
-						<label>Email</label>
-						<input type="email" name="username" required>
-					</div>
-					<div>
-						<label>Password</label>
-						<input type="password" name="password" required>
-					</div>
-					<div>
-						<label>Repeat <abbr title="password">pwd</abbr></label>
-						<input type="password" name="repeat_password" required>
-					</div>
-					<input type="submit" class="btn" value="Sign up">
-				</form>
-			</div>	
-		</script>
-		<script id="login_view" type="text/view">
-		    <header>
-
-		        <div class="menu">
-		        	<div class="menu_title">
-		    			Twidder
-					</div>
-		            <div class="menu_tab selected" rel="home"><span>Home</span></div>
-		            <div class="menu_tab" rel="browse"><span>Browse</span></div>
-		            <div class="menu_tab" rel="account"><span>Account</span></div>
-                </div>
-            </header>
-			<section>
-			    <div id="home" class="panel">
-			        <h1>Home</h1>
-			        <div id="home_view_container">
-			        </div>
-			    </div>
-			    <div id="browse" class="panel hidden">
-			        <h1>Browse</h1>
-			        <form id="search_form">
-			        	<input type="email" name="otherUsername" required />
-			        	<input type="submit" class="btn" value="Search">
-					</form>
-					<div id="browse_view_container">
-					</div>
-			    </div>
-			    <div id="account" class="panel hidden">
-			        <h1>Account</h1>
-			        <div>
-			        	<h2>Change password</h2>
-						<form id="change_password" action="#" method="post">
-							<div>
-								<label for="old_password">Old password</label>
-								<input type="password" name="oldPassword" id="old_password" />
-							</div>
-							<div>
-								<label for="new_password">New password</label>
-								<input type="password" name="newPassword" id="new_password" />
-							</div>
-							<input type="submit" class="btn" value="Change password" />
-						</form>
-			        </div>
-			        <button id="sign_out" class="btn">Sign out</button>
-			    </div>
-			</section>
-			<footer>Twidder &copy; 2016-.</footer>
-		</script>
-		<script id="message_view" type="text/view">
-			<div class="message hidden" />
-				<div class="message_close">x</div>
-				<div class="message_text"></div>
-			</div>
-		</script>
-		<script id="post_view" type="text/view">
-			<div class="post_text"></div>
-			<div class="post_user"></div>
-		</script>
-		<script id="template_home_view" type="text/view">
-            <div class="wall_container">
-                <div class="wall_content">
-                    <div class="title">
-                        <h2>My posts</h2>
-                        <div class="actions">
-                            <button class="btn wall_refresh">Refresh</button>
-                        </div>
-                    </div>
-                    <form class="wall_post_message post_message">
-                        <textarea class="home_post_textarea" placeholder="What are your thoughts..."></textarea>
-                        <input type="submit" class="btn" value="Send" />
-                    </form>
-                    <div class="home_wall">
-                    </div>
-                </div>
-                <div class="wall_profile">
-                    <h2>Profile</h2>
-                    <div class="profile">
-						<div class="profile_title">Email</div>
-						<div class="profile_info profile_email" name="email"></div>
-
-						<div class="profile_title">Name</div>
-						<div class="profile_info profile_name" name="full_name"></div>
-
-						<div class="profile_title">Gender</div>
-						<div class="profile_info profile_gender" name="gender"></div>
-
-						<div class="profile_title">City</div>
-						<div class="profile_info profile_city" name="city"></div>
-
-						<div class="profile_title">Country</div>
-						<div class="profile_info profile_country" name="country"></div>
-					</div>
-                </div>
-            </div>
-		</script>
 	</head>
 	<body>
 		<div id="message_box">

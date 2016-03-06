@@ -1,0 +1,59 @@
+<div class="wall_content">
+    <div class="title">
+        <h2>My posts</h2>
+        <div class="actions">
+            <button class="btn wall_refresh">Refresh</button>
+        </div>
+    </div>
+    <form class="wall_post_message post_message">
+        <textarea class="home_post_textarea" name="message" placeholder="What are your thoughts..."></textarea>
+        <input type="submit" class="btn" value="Send" />
+        <input type="file" name="media" />
+    </form>
+    <div class="home_wall">
+        {{# posts }}
+        <div class="post">
+            <div class="post_text">{{ content }}</div>
+            <div class="post_media">
+                {{#if image}}
+                <img src="/media/{{ image }}" />
+                {{/if}}
+                {{#if video}}
+                <video controls>
+                    <source src="/media/{{ video }}" type="video/{{ format }}" />
+                    Your browser doesn't support this video.
+                </video>
+                {{/if}}
+                {{#if audio}}
+                <audio controls>
+                    <source src="/media/{{ audio }}" type="audio/{{ format }}" />
+                    Your browser doesn't support this audio.
+                </audio>
+                {{/if}}
+            </div>
+            <div class="post_user">{{ from_user }}</div>
+        </div>
+        {{/ posts }}
+    </div>
+</div>
+<div class="wall_profile">
+    <h2>Profile</h2>
+    {{# profile }}
+    <div class="profile">
+        <div class="profile_title">Email</div>
+        <div class="profile_info profile_email" name="email">{{ email }}</div>
+
+        <div class="profile_title">Name</div>
+        <div class="profile_info profile_name" name="full_name">{{ first_name }} {{ family_name }}</div>
+
+        <div class="profile_title">Gender</div>
+        <div class="profile_info profile_gender" name="gender">{{ gender }}</div>
+
+        <div class="profile_title">City</div>
+        <div class="profile_info profile_city" name="city">{{ city }}</div>
+
+        <div class="profile_title">Country</div>
+        <div class="profile_info profile_country" name="country">{{ country }}</div>
+    </div>
+    {{/ profile }}
+</div>

@@ -52,7 +52,7 @@ abbr{
     height: 400px;
     float: left;
     margin-right: 10px;
-    background-image: url("wimage.png");
+    background-image: url("../images/wimage.png");
 }
 
 #login_form{
@@ -185,6 +185,11 @@ footer {
     border-bottom: 3px solid transparent;
 }
 
+.menu_tab {
+    color: black;
+    text-decoration: none;
+}
+
 .menu_tab:hover {
     background-color: rgb(235,235,235);
 }
@@ -221,20 +226,30 @@ footer {
 
 .post_message {
     display: flex;
+    flex-flow: row wrap;
     min-height: 35px;
     margin-bottom: 10px;
 }
 
-.post_message > input {
-    flex: 1 0 0;
+.post_message > input[type="submit"] {
+    flex: 1 0;
     display: inline-block;
 }
 
 .post_message > textarea {
-    flex: 4 0 0;
+    flex: 4 0;
     margin-right: 10px;
     width: 100%;
     display: inline-block;
+}
+
+.post_message > input[type="file"] {
+    flex: 1 100%;
+    justify-content: center;
+}
+
+.wall_post_media {
+    text-align: center;
 }
 
 .post_wall {
@@ -260,6 +275,11 @@ footer {
     font-size: 0.8em;
 }
 
+.post > .post_media img, .post_media video {
+    max-width: 100%;
+    max-height: 300px;
+}
+
 .btn {
     padding: 5px;
 
@@ -280,4 +300,15 @@ footer {
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.chart_legend li span{
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-right: 5px;
+}
+
+.doughnut-legend li{
+    list-style-type: none;
 }

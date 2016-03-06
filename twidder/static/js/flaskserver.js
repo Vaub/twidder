@@ -10,6 +10,8 @@ function XhrSender(xhr, content) {
     var onSuccessCallback = noCallback,
         onErrorCallback = noCallback;
 
+    var isText = false;
+
     function isStatusValid(status) {
         return status >= 200 && status < 400;
     }
@@ -20,7 +22,7 @@ function XhrSender(xhr, content) {
                 return;
             }
 
-            var response = JSON.parse(xhr.response);
+            var response = isText ? xhr.response : JSON.parse(xhr.response);
             isStatusValid(xhr.status) ?
                 onSuccessCallback(response) :
                 onErrorCallback(response);
@@ -50,6 +52,11 @@ function XhrSender(xhr, content) {
             return this;
         },
 
+        asText: function() {
+            isText = true;
+            return this;
+        },
+
         send: function() {
             runXhr();
         }
@@ -62,8 +69,9 @@ function XhrSender(xhr, content) {
  * @param {function} onClose
  * @param {string} [endpoint]
  */
-function WebsocketChannel(sessionToken, onClose, endpoint) {
+function WebsocketChannel(sessionToken, onClose, onReceiveStats, endpoint) {
     var onCloseCallback = onClose || noCallback;
+    var onReceiveStatsCallback = onReceiveStats || noCallback;
 
     var wsEndpoint = (endpoint || ("ws://" + location.host)) + "/messages";
     var socket = new WebSocket(wsEndpoint);
@@ -74,6 +82,15 @@ function WebsocketChannel(sessionToken, onClose, endpoint) {
             "data": sessionToken
         };
         socket.send(JSON.stringify(data));
+    };
+
+    socket.onmessage = function(message){
+        var data = JSON.parse(message.data);
+        switch(data.type){
+            case "statistics":
+                onReceiveStatsCallback(data.data);
+                break;
+        }
     };
 
     socket.onclose = function(event) {
@@ -89,7 +106,7 @@ function WebsocketChannel(sessionToken, onClose, endpoint) {
 
 function Server(endpoint) {
 
-    endpoint = (endpoint || (location.protocol + "//" + location.host));
+    endpoint = (endpoint || (location.protocol + "//" + location.host + "/api"));
 
     function encodeJsonXhr(xhr, data) {
         xhr.setRequestHeader("Content-Type", "application/json");
@@ -137,17 +154,16 @@ function Server(endpoint) {
             return new XhrSender(xhr);
         },
 
-        postMessage: function(token, content, toEmail) {
+        postMessage: function(token, message, media, toEmail) {
             var xhr = new XMLHttpRequest();
             xhr.open("POST", endpoint + "/messages/" + toEmail, true);
             xhr.setRequestHeader("X-Session-Token", token);
 
-            var data = {
-                "message": content
-            };
-            var content = encodeJsonXhr(xhr, data);
+            var data = new FormData();
+            data.append("message", message);
+            data.append("media", media);
 
-            return new XhrSender(xhr, content);
+            return new XhrSender(xhr, data);
         },
 
         getUserDataByToken: function(token) {
