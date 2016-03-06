@@ -154,17 +154,16 @@ function Server(endpoint) {
             return new XhrSender(xhr);
         },
 
-        postMessage: function(token, content, toEmail) {
+        postMessage: function(token, message, media, toEmail) {
             var xhr = new XMLHttpRequest();
             xhr.open("POST", endpoint + "/messages/" + toEmail, true);
             xhr.setRequestHeader("X-Session-Token", token);
 
-            var data = {
-                "message": content
-            };
-            var content = encodeJsonXhr(xhr, data);
+            var data = new FormData();
+            data.append("message", message);
+            data.append("media", media);
 
-            return new XhrSender(xhr, content);
+            return new XhrSender(xhr, data);
         },
 
         getUserDataByToken: function(token) {

@@ -226,20 +226,30 @@ footer {
 
 .post_message {
     display: flex;
+    flex-flow: row wrap;
     min-height: 35px;
     margin-bottom: 10px;
 }
 
-.post_message > input {
-    flex: 1 0 0;
+.post_message > input[type="submit"] {
+    flex: 1 0;
     display: inline-block;
 }
 
 .post_message > textarea {
-    flex: 4 0 0;
+    flex: 4 0;
     margin-right: 10px;
     width: 100%;
     display: inline-block;
+}
+
+.post_message > input[type="file"] {
+    flex: 1 100%;
+    justify-content: center;
+}
+
+.wall_post_media {
+    text-align: center;
 }
 
 .post_wall {
@@ -263,6 +273,11 @@ footer {
 .post > .post_user {
     font-style: italic;
     font-size: 0.8em;
+}
+
+.post > .post_media img, .post_media video {
+    max-width: 100%;
+    max-height: 300px;
 }
 
 .btn {

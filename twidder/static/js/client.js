@@ -80,6 +80,34 @@ function Wall(getProfileFunction, getMessagesFunction, postMessageFunction) {
 
     var wallNode = Utils.createElement("", "wall_container");
 
+    var videoFormats = {"mp4": "mp4"};
+    var audioFormats = {"mp3": "mpeg", "wav": "wav"};
+    var imageFormats = ["jpg", "png"];
+
+    function createPosts(data) {
+        return data.map(function(post) {
+            var newPost = post;
+            if (post.media) {
+                var ext = post.media.substr(post.media.lastIndexOf(".") + 1);
+
+                newPost.format = ext;
+                if (videoFormats[ext]) {
+                    newPost.video = post.media;
+                    newPost.format = videoFormats[ext];
+                }
+                else if (audioFormats[ext]) {
+                    newPost.audio = post.media;
+                    newPost.format = audioFormats[ext];
+                }
+                else if (imageFormats.lastIndexOf(ext) != -1) {
+                    newPost.image = post.media;
+                }
+            }
+
+            return newPost
+        });
+    }
+
     function refreshView() {
         wallNode.innerHTML = templates.use("wall", { posts: posts, profile: profile });
         createHandlers();
@@ -88,7 +116,7 @@ function Wall(getProfileFunction, getMessagesFunction, postMessageFunction) {
     function refreshWall() {
         getMessagesFunction(
             function(response) {
-                posts = response.data;
+                posts = createPosts(response.data);
                 refreshView();
             },
             function(response) {
@@ -97,14 +125,15 @@ function Wall(getProfileFunction, getMessagesFunction, postMessageFunction) {
         );
     }
 
-    function postMessage(message) {
+    function postMessage(message, media) {
         postMessageFunction(
             message,
+            media,
             function(response) {
                 refreshWall();
             },
             function(response) {
-               message.newError(response.message);
+               messages.newError(response.message);
             }
         );
     }
@@ -112,12 +141,14 @@ function Wall(getProfileFunction, getMessagesFunction, postMessageFunction) {
     function createHandlers() {
         var postForm = wallNode.getElementsByClassName("wall_post_message")[0];
         var refreshButton = wallNode.getElementsByClassName("wall_refresh")[0];
-        var postText = wallNode.getElementsByClassName("home_post_textarea")[0];
 
         postForm.onsubmit = function() {
-            if (postText.value) {
-                postMessage(postText.value);
-                postText.value = "";
+            var message = postForm.elements["message"],
+                media = postForm.elements["media"];
+
+            if (message.value || media.files[0]) {
+                postMessage(message.value, media.files[0]);
+                message.value = "";
             }
 
             return false;
@@ -131,7 +162,7 @@ function Wall(getProfileFunction, getMessagesFunction, postMessageFunction) {
 
     function init() {
         var messagesResponse = getMessagesFunction(function(response) {
-            posts = response.data || [];
+            posts = createPosts(response.data || []);
             refreshView();
         });
         var profileResponse = getProfileFunction(function(response) {
@@ -215,7 +246,7 @@ function SignedInView(session) {
 
         var getHomeProfile = function(s, e) { session.getCurrentUserData(s, e); };
         var getHomeMessages = function(s, e) { session.getCurrentUserMessages(s, e); };
-        var postHomeMessage = function(message, s, e) { session.postMessageOnWall(message, s, e) };
+        var postHomeMessage = function(message, media, s, e) { session.postMessageOnWall(message, media, s, e) };
 
         var homeWall = new Wall(getHomeProfile, getHomeMessages, postHomeMessage);
         Utils.removeAllChild(homeViewContainer);
@@ -235,7 +266,7 @@ function SignedInView(session) {
 
         var getBrowseProfile = function(s, e) { session.getOtherUserDataByEmail(email, s, e); };
         var getBrowseMessages = function(s, e) { session.getOtherUserMessagesByEmail(email, s, e); };
-        var postBrowseMessage = function(message, s, e) { session.postMessage(message, email, s, e); };
+        var postBrowseMessage = function(message, media, s, e) { session.postMessage(message, media, email, s, e); };
 
         var browseWall = new Wall(getBrowseProfile, getBrowseMessages, postBrowseMessage);
         Utils.removeAllChild(browseViewContainer);
@@ -487,20 +518,20 @@ function Session(server, notifySessionChange) {
                 .send();
         },
 
-        postMessage: function(message, toEmail, onSuccess, onError) {
+        postMessage: function(message, media, toEmail, onSuccess, onError) {
             server
-                .postMessage(sessionToken, message, toEmail)
+                .postMessage(sessionToken, message, media, toEmail)
                 .onSuccess(onSuccess)
                 .onError(onError)
                 .send();
         },
 
-        postMessageOnWall: function(message, onSuccess, onError) {
+        postMessageOnWall: function(message, media, onSuccess, onError) {
             var that = this;
 
             this.getCurrentUserData(
                 function(response) {
-                    that.postMessage(message, response.data.email, onSuccess, onError);
+                    that.postMessage(message, media, response.data.email, onSuccess, onError);
                 },
                 function(response) {
                     onError(response);
