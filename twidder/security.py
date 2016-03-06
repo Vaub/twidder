@@ -1,4 +1,4 @@
-import hmac, hashlib
+import base64, hmac, hashlib
 from flask import request
 
 from . import app
@@ -23,19 +23,19 @@ class CouldNotValidateRequestError(Exception):
 
 def _validate_request(hasher):
     try:
-        digest = request.headers["X-Request-Digest"]
+        digest = base64.standard_b64decode(request.headers["X-Request-Digest"] or "")
     except KeyError:
         raise CouldNotValidateRequestError()
 
-    message = hasher.digest_message(str(request.get_data()) or "")
+    message = str(request.get_data() or "")
     if not hasher.is_message_valid(message, digest):
         raise CouldNotValidateRequestError()
 
 
-def validate_request(func):
-    def func_wrapper(args):
+def validate_request(f):
+    def decorator():
         message_hasher = MessageHasher(app.config["SECRET_KEY"])
         _validate_request(message_hasher)
-        return func(args)
-    return func_wrapper
+        return f()
+    return decorator
 

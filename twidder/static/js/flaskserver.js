@@ -17,6 +17,11 @@ function XhrSender(xhr, content) {
     }
 
     function runXhr() {
+        var bit_hash = new sjcl.misc.hmac(CLIENT_SECRET).encrypt(content || "");
+        var hex_hash = btoa(sjcl.codec.hex.fromBits(bit_hash));
+
+        xhr.setRequestHeader("X-Request-Digest", hex_hash);
+
         xhr.onreadystatechange = function () {
             if (xhr.readyState != XMLHttpRequest.DONE) {
                 return;
@@ -96,7 +101,7 @@ function WebsocketChannel(sessionToken, onClose, endpoint) {
 
 function Server(endpoint) {
 
-    endpoint = (endpoint || (location.protocol + "//" + location.host));
+    endpoint = (endpoint || (location.protocol + "//" + location.host + "/api"));
 
     function encodeJsonXhr(xhr, data) {
         xhr.setRequestHeader("Content-Type", "application/json");

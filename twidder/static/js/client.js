@@ -9,6 +9,8 @@ var welcomeView;
 
 var templates;
 
+var twidder;
+
 // Creates messages (alerts) for the website no matter the view
 function Messages(messageTimeout) {
 
@@ -150,28 +152,21 @@ function SignedInView(session) {
 
     var template = templates.use("login");
 
-    function displayTab(currentTabId, selectedTabId){
-        var currentTab = document.getElementById(currentTabId);
-        var selectedTab = document.getElementById(selectedTabId);
+    function displayTab(name){
+        var tabs = [].slice.call(document.getElementsByClassName("menu_tab"));
 
-        Utils.addClass(currentTab, "hidden");
-        Utils.removeClass(selectedTab, "hidden");
-    }
+        tabs.forEach(function(tab) {
+            var toDisplayId = tab.getAttribute("rel");
+            var element = document.getElementById(toDisplayId);
 
-    function createTabEvents() {
-        var tabs = document.getElementsByClassName("menu_tab");
+            if (toDisplayId !== name) {
+                Utils.removeClass(tab, "selected");
+                Utils.addClass(element, "hidden");
+                return;
+            }
 
-        Array.prototype.forEach.call(tabs, function (tab) {
-            tab.onclick = function () {
-                var currentTab = document.getElementsByClassName("selected")[0];
-                var currentTabId = currentTab.getAttribute("rel");
-                var selectedTabId = tab.getAttribute("rel");
-
-                Utils.removeClass(currentTab, "selected");
-                Utils.addClass(tab, "selected");
-
-                displayTab(currentTabId, selectedTabId);
-            };
+            Utils.addClass(tab, "selected");
+            Utils.removeClass(element, "hidden");
         });
     }
 
@@ -224,33 +219,34 @@ function SignedInView(session) {
     }
 
     function createBrowseTab() {
-        var browseViewContainer = document.getElementById("browse_view_container");
         var searchForm = document.getElementById("search_form");
-
         searchForm.onsubmit = function(){
-            var email = searchForm.otherUsername.value;
-
-            var successCallback = function(response) {
-                var getBrowseProfile = function(s, e) { session.getOtherUserDataByEmail(email, s, e); };
-                var getBrowseMessages = function(s, e) { session.getOtherUserMessagesByEmail(email, s, e); };
-                var postBrowseMessage = function(message, s, e) { session.postMessage(message, email, s, e); };
-
-                var browseWall = new Wall(getBrowseProfile, getBrowseMessages, postBrowseMessage);
-                Utils.removeAllChild(browseViewContainer);
-                browseViewContainer.appendChild(browseWall.element);
-
-            };
-            var errorCallback = function(response) {
-                messages.newError(response.message);
-            };
-
-            session.getOtherUserDataByEmail(email, successCallback, errorCallback);
+            page("/browse/" + searchForm.otherUsername.value);
             return false;
         };
     }
 
+    function displayUser(email) {
+        var browseViewContainer = document.getElementById("browse_view_container");
+
+        var successCallback = function(response) {
+            var getBrowseProfile = function(s, e) { session.getOtherUserDataByEmail(email, s, e); };
+            var getBrowseMessages = function(s, e) { session.getOtherUserMessagesByEmail(email, s, e); };
+            var postBrowseMessage = function(message, s, e) { session.postMessage(message, email, s, e); };
+
+            var browseWall = new Wall(getBrowseProfile, getBrowseMessages, postBrowseMessage);
+            Utils.removeAllChild(browseViewContainer);
+            browseViewContainer.appendChild(browseWall.element);
+        };
+        var errorCallback = function(response) {
+            messages.newError(response.message);
+        };
+
+        session.getOtherUserDataByEmail(email, successCallback, errorCallback);
+        return false;
+    }
+
     function initializeView() {
-        createTabEvents();
         createAccountTabEvents();
         createHomeTab();
         createBrowseTab();
@@ -259,7 +255,27 @@ function SignedInView(session) {
     return {
         displayView: function () {
             document.getElementById("current_view").innerHTML = template;
+
             initializeView();
+        },
+
+        displayHome: function() {
+            displayTab("home");
+        },
+
+        displayUser: function(email) {
+            displayTab("browse");
+            if (email) {
+                displayUser(email);
+            }
+        },
+
+        displayAccount: function() {
+            displayTab("account");
+        },
+
+        name: function() {
+            return "signedInView";
         }
     }
 }
@@ -341,6 +357,10 @@ function WelcomeView(session) {
         displayView: function () {
             document.getElementById("current_view").innerHTML = templates.use("welcome");
             addEvents();
+        },
+
+        name: function() {
+            return "welcomeView";
         }
     };
 }
@@ -502,12 +522,7 @@ function Session(server, notifySessionChange) {
 
 // Main "refresh" of the website
 var displayView = function () {
-    session.isSignedIn(
-        function() {
-            signedInView.displayView(); },
-        function() {
-            welcomeView.displayView(); }
-    );
+    page("/");
 };
 
 var initApp = function() {
@@ -519,7 +534,8 @@ var initApp = function() {
     signedInView = new SignedInView(session);
     welcomeView = new WelcomeView(session);
 
-    displayView();
+    twidder = new Twidder(session, welcomeView, signedInView);
+    twidder.start();
 };
 
 // "App" constructor
@@ -530,5 +546,7 @@ window.onload = function () {
         .add("login")
         .add("wall")
         .add("message")
-        .compile(initApp);
+        .compile(function() {
+            initApp();
+        });
 };

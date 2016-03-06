@@ -1,5 +1,6 @@
 import os
 import uuid
+import base64
 
 import werkzeug.security as security
 from flask import json, request, escape, abort, send_from_directory, render_template
@@ -193,7 +194,7 @@ def before_request():
     db.connect_db(CONFIG["database"])
 
 
-@app.route("/register", methods=["POST"])
+@app.route("/api/register", methods=["POST"])
 def register():
     data = request.get_json(force=True)
     user = _create_user_to_register(data)
@@ -215,7 +216,7 @@ def _create_user_to_register(data):
         raise UserNotValidError()
 
 
-@app.route("/login", methods=['POST'])
+@app.route("/api/login", methods=['POST'])
 def login():
     auth = request.authorization
     if not _is_auth_data_valid(auth):
@@ -241,13 +242,13 @@ def _is_auth_data_valid(auth):
         return False
 
 
-@app.route("/logout", methods=["POST"])
+@app.route("/api/logout", methods=["POST"])
 def logout():
     identify_session().close()
     return create_response(200, "Logout successful.", [])
 
 
-@app.route("/changePassword", methods=["PUT"])
+@app.route("/api/changePassword", methods=["PUT"])
 @validate_request
 def change_password():
     user = identify_session().user
@@ -270,13 +271,13 @@ def _is_password_data_valid(data):
         return False
 
 
-@app.route("/profile", methods=["GET"])
+@app.route("/api/profile", methods=["GET"])
 def get_user_data_by_token():
     user = identify_session().user
     return create_response(200, "Data successfully retrieved.", _create_user_info(user))
 
 
-@app.route("/profile/<email>", methods=["GET"])
+@app.route("/api/profile/<email>", methods=["GET"])
 def get_user_data_by_email(email):
     identify_session()
     other_user = User.find_user(email)
@@ -289,14 +290,14 @@ def _create_user_info(user):
             "gender": user.gender, "city": user.city, "country": user.country}
 
 
-@app.route("/messages", methods=["GET"])
+@app.route("/api/messages", methods=["GET"])
 def get_user_messages_by_token():
     user = identify_session().user
     messages = [m.__dict__ for m in user.get_messages()]
     return create_response(200, "Messages successfully retrieved.", messages)
 
 
-@app.route("/messages/<email>", methods=["GET"])
+@app.route("/api/messages/<email>", methods=["GET"])
 def get_user_messages_by_email(email):
     identify_session()
     other_user = User.find_user(email)
@@ -305,7 +306,7 @@ def get_user_messages_by_email(email):
     return create_response(200, "Messages successfully retrieved.", messages)
 
 
-@app.route("/messages/<to_user_email>", methods=["POST"])
+@app.route("/api/messages/<to_user_email>", methods=["POST"])
 def post_message(to_user_email):
     user = identify_session().user
     data = request.get_json(force=True)
@@ -325,7 +326,7 @@ def _is_post_message_data_valid(data):
 
 @app.route("/")
 def main():
-    return render_template("client.html", client_secret=app.config["SECRET_KEY"])
+    return render_template("client.html", client_secret=base64.standard_b64encode(app.config["SECRET_KEY"]))
 
 
 @app.route("/templates/<filename>")
@@ -353,7 +354,10 @@ def static_images(filename):
 
 
 bower_components_path = [
-    "handlebars"
+    "handlebars",
+    "bootstrap",
+    "page",
+    "sjcl"
 ]
 
 
@@ -369,6 +373,11 @@ def static_bower(name, filename):
 @app.errorhandler(400)
 def bad_request(error):
     return create_response(400, error.message or "Your request is probably missing data.", [])
+
+
+@app.errorhandler(404)
+def default_dump(error):
+    return render_template("client.html", client_secret=base64.standard_b64encode(app.config["SECRET_KEY"]))
 
 
 @app.errorhandler(CouldNotValidateRequestError)

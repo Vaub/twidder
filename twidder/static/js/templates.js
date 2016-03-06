@@ -1,6 +1,6 @@
 'use strict';
 
-var TEMPLATE_PATH = "templates/";
+var TEMPLATE_PATH = "/templates/";
 
 function Templates() {
 

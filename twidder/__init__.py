@@ -8,7 +8,7 @@ CURRENT_DIRECTORY = os.path.dirname(__file__)
 STATIC_FOLDER = os.path.join("twidder", "static")
 
 app = Flask(__name__, static_url_path='', static_folder=STATIC_FOLDER)
-app.config["SECRET_KEY"] = str(os.urandom(24).encode("hex"))
+app.config["SECRET_KEY"] = os.urandom(24).encode("hex")
 app.root_path = os.getcwd()
 
 app.jinja_loader = jinja2.ChoiceLoader([
