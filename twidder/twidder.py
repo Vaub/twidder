@@ -3,8 +3,9 @@ import uuid
 import base64
 
 import werkzeug.security as security
-from flask import json, request, escape, abort, send_from_directory, render_template
 from geventwebsocket import WebSocketError
+from flask import Flask, json, request, escape, abort, send_from_directory, render_template
+from flask_sockets import Sockets
 
 from . import app, sockets, STATIC_FOLDER
 from security import validate_request, CouldNotValidateRequestError
@@ -19,6 +20,12 @@ CONFIG = {
     "database_schema": "database/database.schema",
     "min_password_length": 6
 }
+
+MEDIA_FOLDER = os.path.join("twidder", "media")
+
+ALLOWED_MEDIA = {"jpg", "png", "mp4", "mp3", "wav"}
+
+app.config['UPLOAD_FOLDER'] = MEDIA_FOLDER
 
 db.init_database(CONFIG["database"], CONFIG["database_schema"])
 
@@ -86,11 +93,12 @@ class Session(object):
 
 
 class Post(object):
-    def __init__(self, to_user, from_user, content, date_posted):
+    def __init__(self, to_user, from_user, content, media, date_posted):
         self.date_posted = date_posted
         self.content = content
         self.from_user = from_user
         self.to_user = to_user
+        self.media = media
 
 
 class User(object):
@@ -123,8 +131,8 @@ class User(object):
         messages = db.select_messages(self.email)
         return [Post(**m) for m in messages]
 
-    def post_message(self, to_user_email, message):
-        if not (to_user_email and message):
+    def post_message(self, to_user_email, message, media_file):
+        if not (to_user_email and (message or media_file)):
             raise CouldNotPostMessageError(COULD_NOT_POST_MESSAGE)
 
         try:
@@ -133,8 +141,14 @@ class User(object):
             raise CouldNotPostMessageError(COULD_NOT_POST_MESSAGE)
 
         try:
-            db.insert_message(to_user_email, self.email, message)
-        except db.CouldNotInsertMessage:
+            media = None
+            if media_file:
+                m = Media(to_user_email)
+                m.post_media(media_file)
+                media = m.name
+
+            db.insert_message(to_user_email, self.email, message=message, media=media)
+        except CouldNotPostMediaError, db.CouldNotInsertMessage:
             raise CouldNotPostMessageError(COULD_NOT_POST_MESSAGE)
 
     def persist(self):
@@ -174,6 +188,47 @@ def is_password_valid(password):
 
 def is_gender_valid(gender):
     return gender and gender in ["m", "f"]
+
+
+class CouldNotFindMediaError(Exception):
+    pass
+
+
+class CouldNotPostMediaError(Exception):
+    pass
+
+
+class Media:
+    def __init__(self, user, name=None, date_posted=None):
+        self.name = name or str(uuid.uuid4())
+        self.user = User.find_user(user).email
+
+    def post_media(self, to_persist):
+        if not Media._allowed_media(to_persist.filename):
+            raise CouldNotPostMediaError()
+
+        self.name = self.name + "." + Media._extract_extension(to_persist.filename)
+        try:
+            db.insert_media(self.user, self.name)
+            to_persist.save(os.path.join(MEDIA_FOLDER, self.name))
+        except db.CouldNotInsertMedia:
+            raise CouldNotPostMediaError()
+
+    @staticmethod
+    def _allowed_media(filename):
+        return "." in filename and Media._extract_extension(filename) in ALLOWED_MEDIA
+
+    @staticmethod
+    def _extract_extension(filename):
+        return filename.rsplit(".", 1)[1]
+
+    @staticmethod
+    def find_media(name):
+        try:
+            media_data = db.select_media(name)
+            return Media(**media_data)
+        except db.MediaDoesNotExists:
+            raise CouldNotFindMediaError()
 
 
 def identify_session():
@@ -309,11 +364,11 @@ def get_user_messages_by_email(email):
 @app.route("/api/messages/<to_user_email>", methods=["POST"])
 def post_message(to_user_email):
     user = identify_session().user
-    data = request.get_json(force=True)
-    if not _is_post_message_data_valid(data):
-        abort(400)
 
-    user.post_message(to_user_email, escape(data["message"]))
+    message = request.form.get("message", "")
+    media = request.files.get("media", None)
+
+    user.post_message(to_user_email, escape(message), media)
     return create_response(200, "Message successfully posted.", [])
 
 
@@ -322,6 +377,11 @@ def _is_post_message_data_valid(data):
         return bool(data["message"])
     except KeyError:
         return False
+
+
+@app.route("/media/<name>")
+def get_user_media(name):
+    return send_from_directory(MEDIA_FOLDER, Media.find_media(name).name)
 
 
 def get_client_secret():
@@ -389,6 +449,12 @@ def could_not_validate_request(error):
     return create_response(401, "Could not validate the request.", [])
 
 
+@app.errorhandler(500)
+def internal_error(error):
+    print("Internal error:\n{}\n".format(error.message or "Unknown"))
+    return create_response(500, "Internal server error.", [])
+
+
 @app.errorhandler(UserNotValidError)
 def user_not_valid(error):
     return create_response(400, error.message, [])
@@ -412,6 +478,11 @@ def could_not_login(error):
 @app.errorhandler(ApiError)
 def generic_error(error):
     return create_response(error.status_code, error.message, [])
+
+
+@app.errorhandler(CouldNotFindMediaError)
+def media_error(error):
+    return create_response(404, "Could not find media!", [])
 
 
 connected_socket = {}

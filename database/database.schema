@@ -1,6 +1,7 @@
 -- DROP TABLE IF EXISTS sessions;
 -- DROP TABLE IF EXISTS posts;
 -- DROP TABLE IF EXISTS users;
+-- DROP TABLE IF EXISTS media;
 
 CREATE TABLE IF NOT EXISTS users(
   email TEXT PRIMARY KEY,
@@ -13,20 +14,30 @@ CREATE TABLE IF NOT EXISTS users(
   country TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS posts(
-  to_user TEXT,
-  from_user TEXT,
-  content TEXT,
-  date_posted TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-  FOREIGN KEY(to_user) REFERENCES users(email),
-  FOREIGN KEY(from_user) REFERENCES users(email)
-);
-
 CREATE TABLE IF NOT EXISTS sessions(
   user TEXT UNIQUE NOT NULL,
   token TEXT NOT NULL,
 
   PRIMARY KEY (user, token),
   FOREIGN KEY (user) REFERENCES users(email)
+);
+
+CREATE TABLE IF NOT EXISTS media(
+  name TEXT UNIQUE NOT NULL,
+  user TEXT,
+
+  PRIMARY KEY (name, user),
+  FOREIGN KEY (user) REFERENCES users(email)
+);
+
+CREATE TABLE IF NOT EXISTS posts(
+  to_user TEXT NOT NULL,
+  from_user TEXT NOT NULL,
+  content TEXT,
+  media TEXT,
+  date_posted TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+  FOREIGN KEY(to_user) REFERENCES users(email),
+  FOREIGN KEY(from_user) REFERENCES users(email),
+  FOREIGN KEY(media) REFERENCES media(name)
 );

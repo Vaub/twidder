@@ -158,16 +158,15 @@ function Server(endpoint) {
             return new XhrSender(xhr, "", token);
         },
 
-        postMessage: function(token, message, toEmail) {
+        postMessage: function(token, message, media, toEmail) {
             var xhr = new XMLHttpRequest();
             xhr.open("POST", endpoint + "/messages/" + toEmail, true);
 
-            var data = {
-                "message": message
-            };
-            var content = encodeJsonXhr(xhr, data);
+            var data = new FormData();
+            data.append("message", message);
+            data.append("media", media);
 
-            return new XhrSender(xhr, content, token);
+            return new XhrSender(xhr, data, token);
         },
 
         getUserDataByToken: function(token) {
