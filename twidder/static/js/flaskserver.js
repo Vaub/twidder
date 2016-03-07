@@ -135,7 +135,7 @@ function Server(endpoint) {
         signOut: function(token) {
             var xhr = new XMLHttpRequest();
             xhr.open("POST", endpoint + "/logout", true);
-            return new XhrSender(xhr, "", sessionToken);
+            return new XhrSender(xhr, "", token);
         },
 
         signUp: function(data) {

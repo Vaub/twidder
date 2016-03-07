@@ -4,10 +4,9 @@ import base64
 
 import werkzeug.security as security
 from geventwebsocket import WebSocketError
-from flask import Flask, json, request, escape, abort, send_from_directory, render_template
-from flask_sockets import Sockets
+from flask import json, request, escape, abort, send_from_directory, render_template
 
-from . import app, sockets, STATIC_FOLDER
+from . import app, sockets, STATIC_FOLDER, MEDIA_FOLDER, ALLOWED_MEDIA
 from security import validate_request, CouldNotValidateRequestError
 import database_helper as db
 
@@ -20,12 +19,6 @@ CONFIG = {
     "database_schema": "database/database.schema",
     "min_password_length": 6
 }
-
-MEDIA_FOLDER = os.path.join("twidder", "media")
-
-ALLOWED_MEDIA = {"jpg", "png", "mp4", "mp3", "wav"}
-
-app.config['UPLOAD_FOLDER'] = MEDIA_FOLDER
 
 db.init_database(CONFIG["database"], CONFIG["database_schema"])
 
