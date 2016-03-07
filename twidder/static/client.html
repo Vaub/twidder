@@ -5,6 +5,11 @@
 
 		<script src="/bower_components/handlebars/handlebars.min.js" type="text/javascript"></script>
 		<script src="/bower_components/page/page.js" type="text/javascript"></script>
+        <script src="/bower_components/sjcl/sjcl.js" type="text/javascript"></script>
+
+        <script type="text/javascript">
+            CLIENT_SECRET = sjcl.codec.hex.toBits(atob("{{ client_secret }}"));
+        </script>
 
 		<script src="/js/common.js" type="text/javascript"></script>
 		<script src="/js/flaskserver.js" type="text/javascript"></script>

@@ -1,10 +1,13 @@
-import uuid, os
+import os
+import uuid
+import base64
 
 import werkzeug.security as security
 from geventwebsocket import WebSocketError
-from flask import Flask, json, request, escape, abort, send_from_directory, stream_with_context
-from flask_sockets import Sockets
+from flask import json, request, escape, abort, send_from_directory, render_template
 
+from . import app, sockets, STATIC_FOLDER, MEDIA_FOLDER, ALLOWED_MEDIA
+from security import validate_request, CouldNotValidateRequestError
 import database_helper as db
 
 SESSION_TOKEN = "X-Session-Token"
@@ -17,16 +20,6 @@ CONFIG = {
     "min_password_length": 6
 }
 
-MEDIA_FOLDER = os.path.join("twidder", "media")
-STATIC_FOLDER = os.path.join("twidder", "static")
-
-ALLOWED_MEDIA = {"jpg", "png", "mp4", "mp3", "wav"}
-
-app = Flask(__name__, static_url_path='', static_folder=STATIC_FOLDER)
-app.config['UPLOAD_FOLDER'] = MEDIA_FOLDER
-app.root_path = os.getcwd()
-
-sockets = Sockets(app)
 db.init_database(CONFIG["database"], CONFIG["database_schema"])
 
 
@@ -304,6 +297,7 @@ def logout():
 
 
 @app.route("/api/changePassword", methods=["PUT"])
+@validate_request
 def change_password():
     user = identify_session().user
     data = request.get_json()
@@ -383,9 +377,13 @@ def get_user_media(name):
     return send_from_directory(MEDIA_FOLDER, Media.find_media(name).name)
 
 
+def get_client_secret():
+    return base64.standard_b64encode(app.config["SECRET_KEY"].encode("hex"))
+
+
 @app.route("/")
 def main():
-    return app.send_static_file("client.html")
+    return render_template("client.html", client_secret=get_client_secret())
 
 
 @app.route("/templates/<filename>")
@@ -415,7 +413,8 @@ def static_images(filename):
 bower_components_path = [
     "handlebars",
     "bootstrap",
-    "page"
+    "page",
+    "sjcl"
 ]
 
 
@@ -435,7 +434,12 @@ def bad_request(error):
 
 @app.errorhandler(404)
 def default_dump(error):
-    return app.send_static_file("client.html")
+    return render_template("client.html", client_secret=get_client_secret())
+
+
+@app.errorhandler(CouldNotValidateRequestError)
+def could_not_validate_request(error):
+    return create_response(401, "Could not validate the request.", [])
 
 
 @app.errorhandler(500)

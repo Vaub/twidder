@@ -19,6 +19,7 @@
   ],
   "dependencies": {
     "handlebars": "^4.0.5",
-    "page": "visionmedia/page.js#^1.6.4"
+    "page": "visionmedia/page.js#^1.6.4",
+    "sjcl": "^1.0.3"
   }
 }
