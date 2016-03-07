@@ -1,3 +1,4 @@
+import datetime
 import base64, hmac, hashlib
 from flask import request
 
@@ -9,11 +10,15 @@ class MessageHasher(object):
         self.key = key
         self.hash_algorithm = hash_algorithm
 
-    def digest_message(self, message):
-        return hmac.HMAC(self.key, msg=message, digestmod=self.hash_algorithm).hexdigest()
+    def digest_message(self, *messages):
+        generator = hmac.HMAC(self.key, digestmod=self.hash_algorithm)
+        for message in messages:
+            generator.update(message)
 
-    def is_message_valid(self, message, digest):
-        to_compare = self.digest_message(message)
+        return generator.hexdigest()
+
+    def is_message_valid(self, digest, *messages):
+        to_compare = self.digest_message(*messages)
         return hmac.compare_digest(to_compare, digest)
 
 
@@ -23,12 +28,20 @@ class CouldNotValidateRequestError(Exception):
 
 def _validate_request(hasher):
     try:
-        digest = base64.standard_b64decode(request.headers["X-Request-Digest"] or "")
+        digest = base64.standard_b64decode(request.headers["X-Request-Hmac"] or "")
+        timestamp = int(request.headers["X-Request-Timestamp"])
+        time_sent = datetime.datetime.utcfromtimestamp(timestamp)
     except KeyError:
         raise CouldNotValidateRequestError()
 
+    session_token = (request.headers["X-Session-Token"]
+                     if "X-Session-Token" in request.headers else None)
+
+    if datetime.datetime.utcnow() - time_sent > datetime.timedelta(minutes=2):
+        raise CouldNotValidateRequestError()
+
     message = str(request.get_data() or "")
-    if not hasher.is_message_valid(message, digest):
+    if not hasher.is_message_valid(digest, str(timestamp), session_token, message):
         raise CouldNotValidateRequestError()
 
 

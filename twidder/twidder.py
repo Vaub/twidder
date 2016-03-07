@@ -324,9 +324,13 @@ def _is_post_message_data_valid(data):
         return False
 
 
+def get_client_secret():
+    return base64.standard_b64encode(app.config["SECRET_KEY"].encode("hex"))
+
+
 @app.route("/")
 def main():
-    return render_template("client.html", client_secret=base64.standard_b64encode(app.config["SECRET_KEY"]))
+    return render_template("client.html", client_secret=get_client_secret())
 
 
 @app.route("/templates/<filename>")
@@ -377,7 +381,7 @@ def bad_request(error):
 
 @app.errorhandler(404)
 def default_dump(error):
-    return render_template("client.html", client_secret=base64.standard_b64encode(app.config["SECRET_KEY"]))
+    return render_template("client.html", client_secret=get_client_secret())
 
 
 @app.errorhandler(CouldNotValidateRequestError)
