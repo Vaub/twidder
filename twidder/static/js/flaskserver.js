@@ -23,7 +23,9 @@ function XhrSender(xhr, content, sessionToken) {
         var hmac = new sjcl.misc.hmac(CLIENT_SECRET);
         hmac.update(currentTimestamp + "");
         hmac.update(sessionToken || "");
-        hmac.update(content || "");
+        if (!(content instanceof FormData)) {
+            hmac.update(content || "");
+        }
 
         var hexHmac = sjcl.codec.hex.fromBits(hmac.digest());
         xhr.setRequestHeader("X-Request-Hmac", btoa(hexHmac));
@@ -89,8 +91,9 @@ function XhrSender(xhr, content, sessionToken) {
  * @param {function} onClose
  * @param {string} [endpoint]
  */
-function WebsocketChannel(sessionToken, onClose, endpoint) {
+function WebsocketChannel(sessionToken, onClose, onReceiveStats, endpoint) {
     var onCloseCallback = onClose || noCallback;
+    var onReceiveStatsCallback = onReceiveStats || noCallback;
 
     var wsEndpoint = (endpoint || ("ws://" + location.host)) + "/messages";
     var socket = new WebSocket(wsEndpoint);
@@ -101,6 +104,15 @@ function WebsocketChannel(sessionToken, onClose, endpoint) {
             "data": sessionToken
         };
         socket.send(JSON.stringify(data));
+    };
+
+    socket.onmessage = function(message){
+        var data = JSON.parse(message.data);
+        switch(data.type){
+            case "statistics":
+                onReceiveStatsCallback(data.data);
+                break;
+        }
     };
 
     socket.onclose = function(event) {

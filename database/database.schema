@@ -1,5 +1,6 @@
 -- DROP TABLE IF EXISTS sessions;
 -- DROP TABLE IF EXISTS posts;
+-- DROP TABLE IF EXISTS page_views;
 -- DROP TABLE IF EXISTS users;
 -- DROP TABLE IF EXISTS media;
 
@@ -40,4 +41,12 @@ CREATE TABLE IF NOT EXISTS posts(
   FOREIGN KEY(to_user) REFERENCES users(email),
   FOREIGN KEY(from_user) REFERENCES users(email),
   FOREIGN KEY(media) REFERENCES media(name)
+);
+
+CREATE TABLE IF NOT EXISTS page_views(
+  user TEXT UNIQUE NOT NULL,
+  number_views INTEGER DEFAULT 0,
+
+  PRIMARY KEY (user, number_views),
+  FOREIGN KEY (user) REFERENCES users(email)
 );

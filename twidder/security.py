@@ -1,5 +1,6 @@
 import datetime
 import base64, hmac, hashlib
+from functools import wraps
 from flask import request
 
 from . import app
@@ -35,20 +36,27 @@ def _validate_request(hasher):
         raise CouldNotValidateRequestError()
 
     session_token = (request.headers["X-Session-Token"]
-                     if "X-Session-Token" in request.headers else None)
+                     if "X-Session-Token" in request.headers else "")
 
     if datetime.datetime.utcnow() - time_sent > datetime.timedelta(minutes=2):
         raise CouldNotValidateRequestError()
 
-    message = str(request.get_data() or "")
+    message = _get_message()
     if not hasher.is_message_valid(digest, str(timestamp), session_token, message):
         raise CouldNotValidateRequestError()
 
 
+def _get_message():
+    if request.form:
+        return ""
+    return str(request.get_data() or "")
+
+
 def validate_request(f):
-    def decorator():
+    @wraps(f)
+    def decorator(*args, **kwargs):
         message_hasher = MessageHasher(app.config["SECRET_KEY"])
         _validate_request(message_hasher)
-        return f()
+        return f(*args, **kwargs)
     return decorator
 

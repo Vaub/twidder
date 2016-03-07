@@ -1,6 +1,7 @@
 import os
 import uuid
 import base64
+import traceback
 
 import werkzeug.security as security
 from geventwebsocket import WebSocketError
@@ -84,6 +85,14 @@ class Session(object):
         except SessionNotValidError:
             return False
 
+    @staticmethod
+    def get_user(token):
+        try:
+            return Session.find_session(token).user
+        except SessionNotValidError:
+            print("Session {} did not exists".format(token))
+            return False
+
 
 class Post(object):
     def __init__(self, to_user, from_user, content, media, date_posted):
@@ -124,6 +133,9 @@ class User(object):
         messages = db.select_messages(self.email)
         return [Post(**m) for m in messages]
 
+    def get_number_of_messages(self):
+        return len(self.get_messages())
+
     def post_message(self, to_user_email, message, media_file):
         if not (to_user_email and (message or media_file)):
             raise CouldNotPostMessageError(COULD_NOT_POST_MESSAGE)
@@ -147,6 +159,12 @@ class User(object):
     def persist(self):
         if not db.persist_user(self.__dict__):
             raise Exception("User could not be persisted???")
+
+    def get_number_views(self):
+        return db.select_page_views(self.email)
+
+    def update_number_views(self):
+        db.persist_page_views(self.email)
 
     def __eq__(self, other):
         if isinstance(other, User):
@@ -243,6 +261,7 @@ def before_request():
 
 
 @app.route("/api/register", methods=["POST"])
+@validate_request
 def register():
     data = request.get_json(force=True)
     user = _create_user_to_register(data)
@@ -265,6 +284,7 @@ def _create_user_to_register(data):
 
 
 @app.route("/api/login", methods=['POST'])
+@validate_request
 def login():
     auth = request.authorization
     if not _is_auth_data_valid(auth):
@@ -291,6 +311,7 @@ def _is_auth_data_valid(auth):
 
 
 @app.route("/api/logout", methods=["POST"])
+@validate_request
 def logout():
     identify_session().close()
     return create_response(200, "Logout successful.", [])
@@ -320,15 +341,20 @@ def _is_password_data_valid(data):
 
 
 @app.route("/api/profile", methods=["GET"])
+@validate_request
 def get_user_data_by_token():
     user = identify_session().user
     return create_response(200, "Data successfully retrieved.", _create_user_info(user))
 
 
 @app.route("/api/profile/<email>", methods=["GET"])
+@validate_request
 def get_user_data_by_email(email):
     identify_session()
     other_user = User.find_user(email)
+
+    other_user.update_number_views()
+    send_statistics()
 
     return create_response(200, "Data successfully retrieved.", _create_user_info(other_user))
 
@@ -339,12 +365,14 @@ def _create_user_info(user):
 
 
 @app.route("/api/messages", methods=["GET"])
+@validate_request
 def get_user_messages_by_token():
     user = identify_session().user
     messages = [m.__dict__ for m in user.get_messages()]
     return create_response(200, "Messages successfully retrieved.", messages)
 
 
+@validate_request
 @app.route("/api/messages/<email>", methods=["GET"])
 def get_user_messages_by_email(email):
     identify_session()
@@ -355,6 +383,7 @@ def get_user_messages_by_email(email):
 
 
 @app.route("/api/messages/<to_user_email>", methods=["POST"])
+@validate_request
 def post_message(to_user_email):
     user = identify_session().user
 
@@ -362,6 +391,7 @@ def post_message(to_user_email):
     media = request.files.get("media", None)
 
     user.post_message(to_user_email, escape(message), media)
+    send_statistics()
     return create_response(200, "Message successfully posted.", [])
 
 
@@ -412,6 +442,7 @@ def static_images(filename):
 
 bower_components_path = [
     "handlebars",
+    "Chart.js",
     "bootstrap",
     "page",
     "sjcl"
@@ -444,7 +475,7 @@ def could_not_validate_request(error):
 
 @app.errorhandler(500)
 def internal_error(error):
-    print("Internal error:\n{}\n".format(error.message or "Unknown"))
+    traceback.print_exc()
     return create_response(500, "Internal server error.", [])
 
 
@@ -497,7 +528,12 @@ def _websocket_connection(ws):
         if token and not Session.does_session_exist(token):
             ws.close()
 
-        message = ws.receive()
+        message = None
+        try:
+            message = ws.receive()
+        except WebSocketError:
+            continue
+
         if not message:
             continue
 
@@ -508,17 +544,38 @@ def _websocket_connection(ws):
             token = content["data"]
             if not _authenticate_user(token, ws):
                 ws.close()
+            send_statistics()
         else:
             pass
 
+    pop_user(token)
+    send_statistics()
+
 
 def _authenticate_user(token, ws):
-    try:
-        user = Session.find_session(token).user
-    except SessionNotValidError:
-        print("Session {} did not exists".format(token))
+    user = pop_user(token)
+    if not user:
+        return False
+
+    connected_socket[user] = ws
+    return True
+
+
+def pop_user(token):
+    user = Session.get_user(token)
+    if not user:
         return False
 
     connected_socket.pop(user).close() if user in connected_socket else None
-    connected_socket[user] = ws
-    return True
+    return user
+
+
+def send_statistics():
+    statistic = {
+        "nb_connected_users": len(connected_socket)
+    }
+
+    for k in connected_socket:
+        statistic["nb_posts"] = k.get_number_of_messages()
+        statistic["nb_views"] = k.get_number_views()
+        connected_socket[k].send(json.dumps({"type": "statistics", "data": statistic}))

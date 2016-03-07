@@ -301,3 +301,14 @@ footer {
     align-items: center;
     justify-content: center;
 }
+
+.chart_legend li span{
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-right: 5px;
+}
+
+.doughnut-legend li{
+    list-style-type: none;
+}
