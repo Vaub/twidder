@@ -8,6 +8,12 @@ from . import app
 
 class MessageHasher(object):
     def __init__(self, key, hash_algorithm=hashlib.sha256):
+        """
+        Hasher
+        :param key: Hashing key
+        :param hash_algorithm: Hashing algorithm (sha256 by defaut)
+        :return:
+        """
         self.key = key
         self.hash_algorithm = hash_algorithm
 
