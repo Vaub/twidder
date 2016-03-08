@@ -251,8 +251,11 @@ class Media:
 
 
 def identify_session():
-    token = request.headers[SESSION_TOKEN]
-    return Session.find_session(token)
+    try:
+        token = request.headers[SESSION_TOKEN]
+        return Session.find_session(token)
+    except KeyError:
+        raise SessionNotValidError()
 
 
 def create_response(status_code, message, data):
