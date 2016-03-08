@@ -11,7 +11,7 @@ class MessageHasher(object):
         """
         Hasher
         :param key: Hashing key
-        :param hash_algorithm: Hashing algorithm (sha256 par defaut)
+        :param hash_algorithm: Hashing algorithm (sha256 by defaut)
         :return:
         """
         self.key = key
