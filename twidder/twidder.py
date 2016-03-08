@@ -557,6 +557,8 @@ def _websocket_connection(ws):
             if not _authenticate_user(token, ws):
                 ws.close()
             send_statistics()
+        if content_type == "statistics":
+            send_statistics()
         else:
             pass
 

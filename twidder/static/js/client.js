@@ -278,6 +278,7 @@ function SignedInView(session) {
     function createChart(){
         var chartViewContainer = document.getElementById("chart_view_container");
         chart = new DonutChart(chartViewContainer);
+        session.updateStatistics();
     }
 
     function initializeView() {
@@ -418,7 +419,9 @@ function Session(server, notifySessionChange) {
         channel = new WebsocketChannel(sessionToken, function() {
             signOutFromServer();
         }, function(statistics){
-            chart.update(statistics);
+            if (chart){
+                chart.update(statistics);
+            }
         });
     }
 
@@ -553,6 +556,10 @@ function Session(server, notifySessionChange) {
                 .onSuccess(onSuccess)
                 .onError(onError)
                 .send();
+        },
+
+        updateStatistics: function(){
+            channel.updateStatistics();
         }
     }
 }

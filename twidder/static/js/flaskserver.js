@@ -122,6 +122,16 @@ function WebsocketChannel(sessionToken, onClose, onReceiveStats, endpoint) {
     return {
         close: function() {
             socket.close();
+        },
+        updateStatistics: function(){
+            if (socket.readyState != 1){
+                return;
+            }
+
+            var data = {
+                "type": "statistics"
+            };
+            socket.send(JSON.stringify(data));
         }
     }
 }
