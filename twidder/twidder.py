@@ -1,4 +1,5 @@
 import os
+import re
 import uuid
 import base64
 import traceback
@@ -126,6 +127,9 @@ class User(object):
             raise UserNotValidError("Password is not valid, use {min_char} characters minimum"
                                     .format(min_chars=CONFIG["min_password_length"]))
 
+        if not is_email_valid(self.email):
+            raise UserNotValidError("Email is not valid.")
+
     def check_password(self, password):
         return security.check_password_hash(self.password, password)
 
@@ -199,6 +203,10 @@ def is_password_valid(password):
 
 def is_gender_valid(gender):
     return gender and gender in ["m", "f"]
+
+
+def is_email_valid(email):
+    return email and re.match(r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)", email)
 
 
 class CouldNotFindMediaError(Exception):
@@ -277,8 +285,12 @@ def _create_user_to_register(data):
     try:
         parsed_data = {k: escape(data[k]) for k in data}
         parsed_data["password"] = User.create_password(data["password"])
-
-        return User(**parsed_data)
+        try:
+            user = User(**parsed_data)
+        except TypeError:
+            raise UserNotValidError()
+        
+        return user
     except KeyError:
         raise UserNotValidError()
 
