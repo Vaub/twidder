@@ -15,7 +15,7 @@ function DonutChart(element){
     };
 
     function convertData(data){
-        var colors = ["#09355C", "#CBCBCB", "#B61B12"]
+        var colors = ["#09355C", "#CBCBCB", "#B61B12"];
         var chartData = [];
 
         var findName = function(name){

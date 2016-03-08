@@ -1,10 +1,14 @@
-import uuid, os
+import os
+import uuid
+import base64
+import traceback
 
 import werkzeug.security as security
 from geventwebsocket import WebSocketError
-from flask import Flask, json, request, escape, abort, send_from_directory, stream_with_context
-from flask_sockets import Sockets
+from flask import json, request, escape, abort, send_from_directory, render_template
 
+from . import app, sockets, STATIC_FOLDER, MEDIA_FOLDER, ALLOWED_MEDIA
+from security import validate_request, CouldNotValidateRequestError
 import database_helper as db
 
 SESSION_TOKEN = "X-Session-Token"
@@ -17,16 +21,6 @@ CONFIG = {
     "min_password_length": 6
 }
 
-MEDIA_FOLDER = os.path.join("twidder", "media")
-STATIC_FOLDER = os.path.join("twidder", "static")
-
-ALLOWED_MEDIA = {"jpg", "png", "mp4", "mp3", "wav"}
-
-app = Flask(__name__, static_url_path='', static_folder=STATIC_FOLDER)
-app.config['UPLOAD_FOLDER'] = MEDIA_FOLDER
-app.root_path = os.getcwd()
-
-sockets = Sockets(app)
 db.init_database(CONFIG["database"], CONFIG["database_schema"])
 
 
@@ -267,6 +261,7 @@ def before_request():
 
 
 @app.route("/api/register", methods=["POST"])
+@validate_request
 def register():
     data = request.get_json(force=True)
     user = _create_user_to_register(data)
@@ -289,6 +284,7 @@ def _create_user_to_register(data):
 
 
 @app.route("/api/login", methods=['POST'])
+@validate_request
 def login():
     auth = request.authorization
     if not _is_auth_data_valid(auth):
@@ -315,12 +311,14 @@ def _is_auth_data_valid(auth):
 
 
 @app.route("/api/logout", methods=["POST"])
+@validate_request
 def logout():
     identify_session().close()
     return create_response(200, "Logout successful.", [])
 
 
 @app.route("/api/changePassword", methods=["PUT"])
+@validate_request
 def change_password():
     user = identify_session().user
     data = request.get_json()
@@ -343,12 +341,14 @@ def _is_password_data_valid(data):
 
 
 @app.route("/api/profile", methods=["GET"])
+@validate_request
 def get_user_data_by_token():
     user = identify_session().user
     return create_response(200, "Data successfully retrieved.", _create_user_info(user))
 
 
 @app.route("/api/profile/<email>", methods=["GET"])
+@validate_request
 def get_user_data_by_email(email):
     identify_session()
     other_user = User.find_user(email)
@@ -365,12 +365,14 @@ def _create_user_info(user):
 
 
 @app.route("/api/messages", methods=["GET"])
+@validate_request
 def get_user_messages_by_token():
     user = identify_session().user
     messages = [m.__dict__ for m in user.get_messages()]
     return create_response(200, "Messages successfully retrieved.", messages)
 
 
+@validate_request
 @app.route("/api/messages/<email>", methods=["GET"])
 def get_user_messages_by_email(email):
     identify_session()
@@ -381,6 +383,7 @@ def get_user_messages_by_email(email):
 
 
 @app.route("/api/messages/<to_user_email>", methods=["POST"])
+@validate_request
 def post_message(to_user_email):
     user = identify_session().user
 
@@ -404,9 +407,13 @@ def get_user_media(name):
     return send_from_directory(MEDIA_FOLDER, Media.find_media(name).name)
 
 
+def get_client_secret():
+    return base64.standard_b64encode(app.config["SECRET_KEY"].encode("hex"))
+
+
 @app.route("/")
 def main():
-    return app.send_static_file("client.html")
+    return render_template("client.html", client_secret=get_client_secret())
 
 
 @app.route("/templates/<filename>")
@@ -437,7 +444,8 @@ bower_components_path = [
     "handlebars",
     "Chart.js",
     "bootstrap",
-    "page"
+    "page",
+    "sjcl"
 ]
 
 
@@ -457,12 +465,17 @@ def bad_request(error):
 
 @app.errorhandler(404)
 def default_dump(error):
-    return app.send_static_file("client.html")
+    return render_template("client.html", client_secret=get_client_secret())
+
+
+@app.errorhandler(CouldNotValidateRequestError)
+def could_not_validate_request(error):
+    return create_response(401, "Could not validate the request.", [])
 
 
 @app.errorhandler(500)
 def internal_error(error):
-    print("Internal error:\n{}\n".format(error.message or "Unknown"))
+    traceback.print_exc()
     return create_response(500, "Internal server error.", [])
 
 
