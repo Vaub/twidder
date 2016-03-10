@@ -167,6 +167,7 @@ function Wall(getProfileFunction, getMessagesFunction, postMessageFunction) {
         });
         var profileResponse = getProfileFunction(function(response) {
             profile = response.data;
+            profile.gender = profile.gender === "m" ? "Male" : "Female";
             refreshView();
         }, function(response){
             messages.newError("User does not exists.");
@@ -373,13 +374,13 @@ function WelcomeView(session) {
             if (validateSignupFormData(signup)) {
 
                 var signUpForm = {
-                    email: signup.username.value,
-                    password: signup.password.value,
-                    first_name: signup.first_name.value,
-                    family_name: signup.family_name.value,
-                    gender: signup.gender.value,
-                    city: signup.city.value,
-                    country: signup.country.value
+                    "email": signup.username.value,
+                    "password": signup.password.value,
+                    "first_name": signup.first_name.value,
+                    "family_name": signup.family_name.value,
+                    "gender": signup.gender.value,
+                    "city": signup.city.value,
+                    "country": signup.country.value
                 };
 
                 session.signUp(signUpForm);
