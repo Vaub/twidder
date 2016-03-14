@@ -1,0 +1,26 @@
+{
+  "name": "twidder",
+  "homepage": "https://github.com/Vaub/twidder",
+  "authors": [
+    "Isabelle",
+    "Vincent"
+  ],
+  "description": "",
+  "main": "",
+  "moduleType": [],
+  "license": "MIT",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "handlebars": "^4.0.5",
+    "page": "visionmedia/page.js#^1.6.4",
+    "sjcl": "^1.0.3",
+    "Chart.js": "^1.0.2"
+  }
+}

@@ -31,8 +31,17 @@ DELETE_SESSION = "DELETE FROM sessions WHERE token = ?"
 
 SELECT_MESSAGES = "SELECT * FROM posts WHERE to_user = ? ORDER BY date_posted DESC"
 
-INSERT_MESSAGE = "INSERT INTO posts(to_user, from_user, content) VALUES (?, ?, ?)"
+INSERT_MESSAGE = "INSERT INTO posts(to_user, from_user, content, media) VALUES (?, ?, ?, ?)"
 
+SELECT_PAGE_VIEWS = "SELECT * FROM page_views WHERE user = ?"
+
+INSERT_PAGE_VIEWS = "INSERT OR IGNORE INTO page_views(user) VALUES (?)"
+
+UPDATE_PAGE_VIEWS = "UPDATE page_views SET number_views = number_views+1 WHERE user = ?"
+
+SELECT_MEDIA = "SELECT * FROM media WHERE name = ?"
+
+INSERT_MEDIA = "INSERT INTO media (user, name) VALUES (?, ?)"
 
 class UserDoesNotExist(Exception):
     def __init__(self): pass
@@ -156,10 +165,61 @@ class CouldNotInsertMessage(Exception):
     pass
 
 
-def insert_message(to_user_email, from_user_email, message):
+def insert_message(to_user_email, from_user_email, message=None, media=None):
     conn = g.db
     try:
-        conn.execute(INSERT_MESSAGE, (to_user_email, from_user_email, message,))
+        conn.execute(INSERT_MESSAGE, (to_user_email, from_user_email, message, media))
         conn.commit()
     except sqlite3.Error:
         raise CouldNotInsertMessage()
+
+
+class CouldNotFindPageView(Exception):
+    pass
+
+
+def select_page_views(email):
+    conn = g.db
+    try:
+        number_of_views = conn.execute(SELECT_PAGE_VIEWS, (email,)).fetchone()
+        return number_of_views["number_views"] if number_of_views else 0
+    except sqlite3.Error:
+        raise CouldNotFindPageView()
+
+
+def persist_page_views(email):
+    conn = g.db
+    try:
+        conn.execute(INSERT_PAGE_VIEWS, (email,))
+        conn.execute(UPDATE_PAGE_VIEWS, (email,))
+        conn.commit()
+    except sqlite3.Error:
+        raise CouldNotFindPageView()
+
+
+class MediaDoesNotExists(Exception):
+    pass
+
+
+def select_media(name):
+    conn = g.db
+    try:
+        media = conn.execute(SELECT_MEDIA, (name,)).fetchone()
+        if not media:
+            raise MediaDoesNotExists()
+
+        return media
+    except sqlite3.Error:
+        raise MediaDoesNotExists()
+
+
+class CouldNotInsertMedia(Exception):
+    pass
+
+
+def insert_media(user_email, name):
+    conn = g.db
+    try:
+        conn.execute(INSERT_MEDIA, (user_email, name,))
+    except sqlite3.Error:
+        raise CouldNotInsertMedia()

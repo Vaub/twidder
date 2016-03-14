@@ -1,10 +1,15 @@
-import uuid, os
+import os
+import re
+import uuid
+import base64
+import traceback
 
 import werkzeug.security as security
 from geventwebsocket import WebSocketError
-from flask import Flask, json, request, escape, abort, send_from_directory
-from flask_sockets import Sockets
+from flask import json, request, escape, abort, send_from_directory, render_template
 
+from . import app, sockets, STATIC_FOLDER, MEDIA_FOLDER, ALLOWED_MEDIA
+from security import validate_request, CouldNotValidateRequestError
 import database_helper as db
 
 SESSION_TOKEN = "X-Session-Token"
@@ -17,12 +22,6 @@ CONFIG = {
     "min_password_length": 6
 }
 
-STATIC_FOLDER = os.path.join("twidder", "static")
-
-app = Flask(__name__, static_url_path='', static_folder=STATIC_FOLDER)
-app.root_path = os.getcwd()
-
-sockets = Sockets(app)
 db.init_database(CONFIG["database"], CONFIG["database_schema"])
 
 
@@ -87,13 +86,22 @@ class Session(object):
         except SessionNotValidError:
             return False
 
+    @staticmethod
+    def get_user(token):
+        try:
+            return Session.find_session(token).user
+        except SessionNotValidError:
+            print("Session {} did not exists".format(token))
+            return False
+
 
 class Post(object):
-    def __init__(self, to_user, from_user, content, date_posted):
+    def __init__(self, to_user, from_user, content, media, date_posted):
         self.date_posted = date_posted
         self.content = content
         self.from_user = from_user
         self.to_user = to_user
+        self.media = media
 
 
 class User(object):
@@ -119,6 +127,9 @@ class User(object):
             raise UserNotValidError("Password is not valid, use {min_char} characters minimum"
                                     .format(min_chars=CONFIG["min_password_length"]))
 
+        if not is_email_valid(self.email):
+            raise UserNotValidError("Email is not valid.")
+
     def check_password(self, password):
         return security.check_password_hash(self.password, password)
 
@@ -126,8 +137,11 @@ class User(object):
         messages = db.select_messages(self.email)
         return [Post(**m) for m in messages]
 
-    def post_message(self, to_user_email, message):
-        if not (to_user_email and message):
+    def get_number_of_messages(self):
+        return len(self.get_messages())
+
+    def post_message(self, to_user_email, message, media_file):
+        if not (to_user_email and (message or media_file)):
             raise CouldNotPostMessageError(COULD_NOT_POST_MESSAGE)
 
         try:
@@ -136,13 +150,25 @@ class User(object):
             raise CouldNotPostMessageError(COULD_NOT_POST_MESSAGE)
 
         try:
-            db.insert_message(to_user_email, self.email, message)
-        except db.CouldNotInsertMessage:
+            media = None
+            if media_file:
+                m = Media(to_user_email)
+                m.post_media(media_file)
+                media = m.name
+
+            db.insert_message(to_user_email, self.email, message=message, media=media)
+        except CouldNotPostMediaError, db.CouldNotInsertMessage:
             raise CouldNotPostMessageError(COULD_NOT_POST_MESSAGE)
 
     def persist(self):
         if not db.persist_user(self.__dict__):
             raise Exception("User could not be persisted???")
+
+    def get_number_views(self):
+        return db.select_page_views(self.email)
+
+    def update_number_views(self):
+        db.persist_page_views(self.email)
 
     def __eq__(self, other):
         if isinstance(other, User):
@@ -179,9 +205,57 @@ def is_gender_valid(gender):
     return gender and gender in ["m", "f"]
 
 
+def is_email_valid(email):
+    return email and re.match(r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)", email)
+
+
+class CouldNotFindMediaError(Exception):
+    pass
+
+
+class CouldNotPostMediaError(Exception):
+    pass
+
+
+class Media:
+    def __init__(self, user, name=None, date_posted=None):
+        self.name = name or str(uuid.uuid4())
+        self.user = User.find_user(user).email
+
+    def post_media(self, to_persist):
+        if not Media._allowed_media(to_persist.filename):
+            raise CouldNotPostMediaError()
+
+        self.name = self.name + "." + Media._extract_extension(to_persist.filename)
+        try:
+            db.insert_media(self.user, self.name)
+            to_persist.save(os.path.join(MEDIA_FOLDER, self.name))
+        except db.CouldNotInsertMedia:
+            raise CouldNotPostMediaError()
+
+    @staticmethod
+    def _allowed_media(filename):
+        return "." in filename and Media._extract_extension(filename) in ALLOWED_MEDIA
+
+    @staticmethod
+    def _extract_extension(filename):
+        return filename.rsplit(".", 1)[1]
+
+    @staticmethod
+    def find_media(name):
+        try:
+            media_data = db.select_media(name)
+            return Media(**media_data)
+        except db.MediaDoesNotExists:
+            raise CouldNotFindMediaError()
+
+
 def identify_session():
-    token = request.headers[SESSION_TOKEN]
-    return Session.find_session(token)
+    try:
+        token = request.headers[SESSION_TOKEN]
+        return Session.find_session(token)
+    except KeyError:
+        raise SessionNotValidError()
 
 
 def create_response(status_code, message, data):
@@ -197,7 +271,8 @@ def before_request():
     db.connect_db(CONFIG["database"])
 
 
-@app.route("/register", methods=["POST"])
+@app.route("/api/register", methods=["POST"])
+@validate_request
 def register():
     data = request.get_json(force=True)
     user = _create_user_to_register(data)
@@ -213,13 +288,18 @@ def _create_user_to_register(data):
     try:
         parsed_data = {k: escape(data[k]) for k in data}
         parsed_data["password"] = User.create_password(data["password"])
-
-        return User(**parsed_data)
+        try:
+            user = User(**parsed_data)
+        except TypeError:
+            raise UserNotValidError()
+        
+        return user
     except KeyError:
         raise UserNotValidError()
 
 
-@app.route("/login", methods=['POST'])
+@app.route("/api/login", methods=['POST'])
+@validate_request
 def login():
     auth = request.authorization
     if not _is_auth_data_valid(auth):
@@ -245,13 +325,15 @@ def _is_auth_data_valid(auth):
         return False
 
 
-@app.route("/logout", methods=["POST"])
+@app.route("/api/logout", methods=["POST"])
+@validate_request
 def logout():
     identify_session().close()
     return create_response(200, "Logout successful.", [])
 
 
-@app.route("/changePassword", methods=["PUT"])
+@app.route("/api/changePassword", methods=["PUT"])
+@validate_request
 def change_password():
     user = identify_session().user
     data = request.get_json()
@@ -273,16 +355,21 @@ def _is_password_data_valid(data):
         return False
 
 
-@app.route("/profile", methods=["GET"])
+@app.route("/api/profile", methods=["GET"])
+@validate_request
 def get_user_data_by_token():
     user = identify_session().user
     return create_response(200, "Data successfully retrieved.", _create_user_info(user))
 
 
-@app.route("/profile/<email>", methods=["GET"])
+@app.route("/api/profile/<email>", methods=["GET"])
+@validate_request
 def get_user_data_by_email(email):
     identify_session()
     other_user = User.find_user(email)
+
+    other_user.update_number_views()
+    send_statistics()
 
     return create_response(200, "Data successfully retrieved.", _create_user_info(other_user))
 
@@ -292,14 +379,16 @@ def _create_user_info(user):
             "gender": user.gender, "city": user.city, "country": user.country}
 
 
-@app.route("/messages", methods=["GET"])
+@app.route("/api/messages", methods=["GET"])
+@validate_request
 def get_user_messages_by_token():
     user = identify_session().user
     messages = [m.__dict__ for m in user.get_messages()]
     return create_response(200, "Messages successfully retrieved.", messages)
 
 
-@app.route("/messages/<email>", methods=["GET"])
+@validate_request
+@app.route("/api/messages/<email>", methods=["GET"])
 def get_user_messages_by_email(email):
     identify_session()
     other_user = User.find_user(email)
@@ -308,14 +397,16 @@ def get_user_messages_by_email(email):
     return create_response(200, "Messages successfully retrieved.", messages)
 
 
-@app.route("/messages/<to_user_email>", methods=["POST"])
+@app.route("/api/messages/<to_user_email>", methods=["POST"])
+@validate_request
 def post_message(to_user_email):
     user = identify_session().user
-    data = request.get_json(force=True)
-    if not _is_post_message_data_valid(data):
-        abort(400)
 
-    user.post_message(to_user_email, escape(data["message"]))
+    message = request.form.get("message", "")
+    media = request.files.get("media", None)
+
+    user.post_message(to_user_email, escape(message), media)
+    send_statistics()
     return create_response(200, "Message successfully posted.", [])
 
 
@@ -326,20 +417,81 @@ def _is_post_message_data_valid(data):
         return False
 
 
+@app.route("/media/<name>")
+def get_user_media(name):
+    return send_from_directory(MEDIA_FOLDER, Media.find_media(name).name)
+
+
+def get_client_secret():
+    return base64.standard_b64encode(app.config["SECRET_KEY"].encode("hex"))
+
+
 @app.route("/")
 def main():
-    path = os.path.join("client.html")
-    return app.send_static_file(path)
+    return render_template("client.html", client_secret=get_client_secret())
 
 
-@app.route("/<name>")
-def static_resources(name):
-    return send_from_directory(STATIC_FOLDER, name)
+@app.route("/templates/<filename>")
+def static_templates(filename):
+    folder = os.path.join(STATIC_FOLDER, "templates")
+    return send_from_directory(folder, filename)
+
+
+@app.route("/js/<filename>")
+def static_js(filename):
+    folder = os.path.join(STATIC_FOLDER, "js")
+    return send_from_directory(folder, filename)
+
+
+@app.route("/css/<filename>")
+def static_css(filename):
+    folder = os.path.join(STATIC_FOLDER, "css")
+    return send_from_directory(folder, filename)
+
+
+@app.route("/images/<filename>")
+def static_images(filename):
+    folder = os.path.join(STATIC_FOLDER, "images")
+    return send_from_directory(folder, filename)
+
+
+bower_components_path = [
+    "handlebars",
+    "Chart.js",
+    "bootstrap",
+    "page",
+    "sjcl"
+]
+
+
+@app.route("/bower_components/<name>/<filename>")
+def static_bower(name, filename):
+    if name not in bower_components_path:
+        abort(404)
+
+    directory = os.path.join(STATIC_FOLDER, "bower_components", name)
+    return send_from_directory(directory, filename)
 
 
 @app.errorhandler(400)
 def bad_request(error):
     return create_response(400, error.message or "Your request is probably missing data.", [])
+
+
+@app.errorhandler(404)
+def default_dump(error):
+    return render_template("client.html", client_secret=get_client_secret())
+
+
+@app.errorhandler(CouldNotValidateRequestError)
+def could_not_validate_request(error):
+    return create_response(401, "Could not validate the request.", [])
+
+
+@app.errorhandler(500)
+def internal_error(error):
+    traceback.print_exc()
+    return create_response(500, "Internal server error.", [])
 
 
 @app.errorhandler(UserNotValidError)
@@ -367,6 +519,11 @@ def generic_error(error):
     return create_response(error.status_code, error.message, [])
 
 
+@app.errorhandler(CouldNotFindMediaError)
+def media_error(error):
+    return create_response(404, "Could not find media!", [])
+
+
 connected_socket = {}
 
 
@@ -386,7 +543,12 @@ def _websocket_connection(ws):
         if token and not Session.does_session_exist(token):
             ws.close()
 
-        message = ws.receive()
+        message = None
+        try:
+            message = ws.receive()
+        except WebSocketError:
+            continue
+
         if not message:
             continue
 
@@ -397,17 +559,40 @@ def _websocket_connection(ws):
             token = content["data"]
             if not _authenticate_user(token, ws):
                 ws.close()
+            send_statistics()
+        if content_type == "statistics":
+            send_statistics()
         else:
             pass
 
+    pop_user(token)
+    send_statistics()
+
 
 def _authenticate_user(token, ws):
-    try:
-        user = Session.find_session(token).user
-    except SessionNotValidError:
-        print("Session {} did not exists".format(token))
+    user = pop_user(token)
+    if not user:
+        return False
+
+    connected_socket[user] = ws
+    return True
+
+
+def pop_user(token):
+    user = Session.get_user(token)
+    if not user:
         return False
 
     connected_socket.pop(user).close() if user in connected_socket else None
-    connected_socket[user] = ws
-    return True
+    return user
+
+
+def send_statistics():
+    statistic = {
+        "nb_connected_users": len(connected_socket)
+    }
+
+    for k in connected_socket:
+        statistic["nb_posts"] = k.get_number_of_messages()
+        statistic["nb_views"] = k.get_number_views()
+        connected_socket[k].send(json.dumps({"type": "statistics", "data": statistic}))

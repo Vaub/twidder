@@ -1,4 +1,9 @@
 *.db
+twidder/media/*
+!twidder/media/.do_not_remove
+
+# bower
+bower_components/
 
 # Vim
 *.swp

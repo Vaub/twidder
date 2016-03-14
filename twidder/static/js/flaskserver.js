@@ -4,23 +4,47 @@
  * A promise object to wrap an XMLHttpRequest
  * @param {XMLHttpRequest} xhr
  * @param {string} [content]
+ * @param {string} [sessionToken]
  */
-function XhrSender(xhr, content) {
+function XhrSender(xhr, content, sessionToken) {
 
     var onSuccessCallback = noCallback,
         onErrorCallback = noCallback;
+
+    var isText = false;
 
     function isStatusValid(status) {
         return status >= 200 && status < 400;
     }
 
+    function appendHmac() {
+        var currentTimestamp = Date.now() / 1e3 | 0;
+
+        var hmac = new sjcl.misc.hmac(CLIENT_SECRET);
+        hmac.update(currentTimestamp + "");
+        hmac.update(sessionToken || "");
+        if (!(content instanceof FormData)) {
+            hmac.update(content || "");
+        }
+
+        var hexHmac = sjcl.codec.hex.fromBits(hmac.digest());
+        xhr.setRequestHeader("X-Request-Hmac", btoa(hexHmac));
+        xhr.setRequestHeader("X-Request-Timestamp", currentTimestamp + "");
+
+        if (sessionToken) {
+            xhr.setRequestHeader("X-Session-Token", sessionToken)
+        }
+    }
+
     function runXhr() {
+        appendHmac();
+
         xhr.onreadystatechange = function () {
             if (xhr.readyState != XMLHttpRequest.DONE) {
                 return;
             }
 
-            var response = JSON.parse(xhr.response);
+            var response = isText ? xhr.response : JSON.parse(xhr.response);
             isStatusValid(xhr.status) ?
                 onSuccessCallback(response) :
                 onErrorCallback(response);
@@ -50,6 +74,11 @@ function XhrSender(xhr, content) {
             return this;
         },
 
+        asText: function() {
+            isText = true;
+            return this;
+        },
+
         send: function() {
             runXhr();
         }
@@ -62,8 +91,9 @@ function XhrSender(xhr, content) {
  * @param {function} onClose
  * @param {string} [endpoint]
  */
-function WebsocketChannel(sessionToken, onClose, endpoint) {
+function WebsocketChannel(sessionToken, onClose, onReceiveStats, endpoint) {
     var onCloseCallback = onClose || noCallback;
+    var onReceiveStatsCallback = onReceiveStats || noCallback;
 
     var wsEndpoint = (endpoint || ("ws://" + location.host)) + "/messages";
     var socket = new WebSocket(wsEndpoint);
@@ -76,6 +106,15 @@ function WebsocketChannel(sessionToken, onClose, endpoint) {
         socket.send(JSON.stringify(data));
     };
 
+    socket.onmessage = function(message){
+        var data = JSON.parse(message.data);
+        switch(data.type){
+            case "statistics":
+                onReceiveStatsCallback(data.data);
+                break;
+        }
+    };
+
     socket.onclose = function(event) {
         onCloseCallback();
     };
@@ -83,13 +122,23 @@ function WebsocketChannel(sessionToken, onClose, endpoint) {
     return {
         close: function() {
             socket.close();
+        },
+        updateStatistics: function(){
+            if (socket.readyState != 1){
+                return;
+            }
+
+            var data = {
+                "type": "statistics"
+            };
+            socket.send(JSON.stringify(data));
         }
     }
 }
 
 function Server(endpoint) {
 
-    endpoint = (endpoint || (location.protocol + "//" + location.host));
+    endpoint = (endpoint || (location.protocol + "//" + location.host + "/api"));
 
     function encodeJsonXhr(xhr, data) {
         xhr.setRequestHeader("Content-Type", "application/json");
@@ -108,9 +157,7 @@ function Server(endpoint) {
         signOut: function(token) {
             var xhr = new XMLHttpRequest();
             xhr.open("POST", endpoint + "/logout", true);
-            xhr.setRequestHeader("X-Session-Token", token);
-
-            return new XhrSender(xhr);
+            return new XhrSender(xhr, "", token);
         },
 
         signUp: function(data) {
@@ -124,52 +171,41 @@ function Server(endpoint) {
         getUserMessagesByToken: function(token) {
             var xhr = new XMLHttpRequest();
             xhr.open("GET", endpoint + "/messages", true);
-            xhr.setRequestHeader("X-Session-Token", token);
-
-            return new XhrSender(xhr);
+            return new XhrSender(xhr, "", token);
         },
 
         getUserMessagesByEmail: function(token, email) {
             var xhr = new XMLHttpRequest();
             xhr.open("GET", endpoint + "/messages/" + email, true);
-            xhr.setRequestHeader("X-Session-Token", token);
-
-            return new XhrSender(xhr);
+            return new XhrSender(xhr, "", token);
         },
 
-        postMessage: function(token, content, toEmail) {
+        postMessage: function(token, message, media, toEmail) {
             var xhr = new XMLHttpRequest();
             xhr.open("POST", endpoint + "/messages/" + toEmail, true);
-            xhr.setRequestHeader("X-Session-Token", token);
 
-            var data = {
-                "message": content
-            };
-            var content = encodeJsonXhr(xhr, data);
+            var data = new FormData();
+            data.append("message", message);
+            data.append("media", media);
 
-            return new XhrSender(xhr, content);
+            return new XhrSender(xhr, data, token);
         },
 
         getUserDataByToken: function(token) {
             var xhr = new XMLHttpRequest();
             xhr.open("GET", endpoint + "/profile", true);
-            xhr.setRequestHeader("X-Session-Token", token);
-
-            return XhrSender(xhr);
+            return XhrSender(xhr, "", token);
         },
 
         getUserDataByEmail: function(token, email) {
             var xhr = new XMLHttpRequest();
             xhr.open("GET", endpoint + "/profile/" + email, true);
-            xhr.setRequestHeader("X-Session-Token", token);
-
-            return XhrSender(xhr);
+            return XhrSender(xhr, "", token);
         },
 
         changePassword: function(token, oldPassword, newPassword) {
             var xhr = new XMLHttpRequest();
             xhr.open("PUT", endpoint + "/changePassword", true);
-            xhr.setRequestHeader("X-Session-Token", token);
 
             var data = {
                 "oldPassword": oldPassword,
@@ -177,7 +213,7 @@ function Server(endpoint) {
             };
             var content = encodeJsonXhr(xhr, data);
 
-            return new XhrSender(xhr, content);
+            return new XhrSender(xhr, content, token);
         }
     }
 }
