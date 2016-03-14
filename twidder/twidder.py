@@ -417,6 +417,10 @@ def _is_post_message_data_valid(data):
         return False
 
 
+@app.route("/api/<name>")
+def api_404(name):
+    return create_response(404, "API endpoint not found.", [])
+
 @app.route("/media/<name>")
 def get_user_media(name):
     return send_from_directory(MEDIA_FOLDER, Media.find_media(name).name)
